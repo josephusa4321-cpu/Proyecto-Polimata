@@ -1,0 +1,236 @@
+{
+  "module": {
+    "id": "1.1",
+    "title": "Pensamiento Sistémico",
+    "subtitle": "Ver las Interconexiones",
+    "quote": "Antes de mover una pieza, entiende el tablero completo.",
+    "pillar": 1,
+    "pillarName": "Pensamiento Estratégico-Sistémico",
+    "totalCards": 14
+  },
+  "cards": [
+    {
+      "id": "1.1.01",
+      "title": "¿Qué es un sistema?",
+      "subtitle": "Elementos, interconexiones y propósito",
+      "type": "fundamental",
+      "xp": 100,
+      "prerequisites": [],
+      "isTool": false,
+      "isNew": false,
+      "isReframed": false,
+      "crossPillarLinks": [],
+      "auditNote": null
+    },
+    {
+      "id": "1.1.02",
+      "title": "Pensamiento lineal vs. sistémico",
+      "subtitle": "Por qué las líneas rectas no explican el mundo real",
+      "type": "fundamental",
+      "xp": 100,
+      "prerequisites": ["1.1.01"],
+      "isTool": false,
+      "isNew": false,
+      "isReframed": false,
+      "crossPillarLinks": [],
+      "auditNote": null
+    },
+    {
+      "id": "1.1.03",
+      "title": "El mapa no es el territorio",
+      "subtitle": "Korzybski: ningún modelo ES la realidad",
+      "type": "fundamental",
+      "xp": 100,
+      "prerequisites": [],
+      "isTool": true,
+      "isNew": false,
+      "isReframed": false,
+      "crossPillarLinks": [
+        {
+          "targetId": "3.1.01",
+          "priority": "critical",
+          "reason": "Representación vs. realidad: principio epistemológico fundacional"
+        }
+      ],
+      "auditNote": "REUBICADA desde 1.4.05. Sin prereq formal. Debe colorear TODO el aprendizaje desde el día 1."
+    },
+    {
+      "id": "1.1.04",
+      "title": "Bucles de retroalimentación positiva",
+      "subtitle": "Refuerzo: cuando más produce más",
+      "type": "fundamental",
+      "xp": 100,
+      "prerequisites": ["1.1.01"],
+      "isTool": true,
+      "isNew": false,
+      "isReframed": false,
+      "crossPillarLinks": [],
+      "auditNote": null
+    },
+    {
+      "id": "1.1.05",
+      "title": "Bucles de retroalimentación negativa",
+      "subtitle": "Equilibrio: el termostato de los sistemas",
+      "type": "fundamental",
+      "xp": 100,
+      "prerequisites": ["1.1.01"],
+      "isTool": true,
+      "isNew": false,
+      "isReframed": false,
+      "crossPillarLinks": [],
+      "auditNote": null
+    },
+    {
+      "id": "1.1.06",
+      "title": "Stocks y flujos",
+      "subtitle": "La acumulación en sistemas",
+      "type": "intermediate",
+      "xp": 75,
+      "prerequisites": ["1.1.04", "1.1.05"],
+      "isTool": true,
+      "isNew": false,
+      "isReframed": false,
+      "crossPillarLinks": [],
+      "auditNote": null
+    },
+    {
+      "id": "1.1.07",
+      "title": "Emergencia",
+      "subtitle": "Cuando el todo es más que la suma de las partes",
+      "type": "intermediate",
+      "xp": 75,
+      "prerequisites": ["1.1.02"],
+      "isTool": false,
+      "isNew": false,
+      "isReframed": false,
+      "crossPillarLinks": [
+        {
+          "targetId": "5.4.08",
+          "priority": "high",
+          "reason": "Emergencia → falacia de composición: lo que emerge no escala linealmente"
+        },
+        {
+          "targetId": "4.1.01",
+          "priority": "medium",
+          "reason": "Creatividad emergente: ideas nuevas emergen de combinaciones"
+        }
+      ],
+      "auditNote": null
+    },
+    {
+      "id": "1.1.08",
+      "title": "Puntos de apalancamiento",
+      "subtitle": "Donella Meadows: dónde empujar para cambiar el sistema",
+      "type": "intermediate",
+      "xp": 75,
+      "prerequisites": ["1.1.04", "1.1.05", "1.1.06"],
+      "isTool": true,
+      "isNew": false,
+      "isReframed": false,
+      "crossPillarLinks": [
+        {
+          "targetId": "5.3.03",
+          "priority": "high",
+          "reason": "Incentivos como punto de apalancamiento en sistemas sociales"
+        }
+      ],
+      "auditNote": null
+    },
+    {
+      "id": "1.1.09",
+      "title": "No-linealidad y puntos de inflexión",
+      "subtitle": "Tipping points: cuando pequeños cambios producen efectos masivos",
+      "type": "intermediate",
+      "xp": 75,
+      "prerequisites": ["1.1.07"],
+      "isTool": false,
+      "isNew": false,
+      "isReframed": false,
+      "crossPillarLinks": [],
+      "auditNote": null
+    },
+    {
+      "id": "1.1.10",
+      "title": "Arquetipo: Límites del crecimiento",
+      "subtitle": "Todo crecimiento exponencial encuentra un techo",
+      "type": "advanced",
+      "xp": 50,
+      "prerequisites": ["1.1.08"],
+      "isTool": true,
+      "isNew": false,
+      "isReframed": false,
+      "crossPillarLinks": [],
+      "auditNote": null
+    },
+    {
+      "id": "1.1.11",
+      "title": "Arquetipo: Desplazamiento de la carga",
+      "subtitle": "Soluciones que empeoran el problema original",
+      "type": "advanced",
+      "xp": 50,
+      "prerequisites": ["1.1.08"],
+      "isTool": true,
+      "isNew": false,
+      "isReframed": false,
+      "crossPillarLinks": [],
+      "auditNote": null
+    },
+    {
+      "id": "1.1.12",
+      "title": "Arquetipos: Escalada y Éxito para los exitosos",
+      "subtitle": "Carreras armamentísticas y efecto Mateo",
+      "type": "advanced",
+      "xp": 50,
+      "prerequisites": ["1.1.08"],
+      "isTool": true,
+      "isNew": false,
+      "isReframed": false,
+      "crossPillarLinks": [],
+      "auditNote": null
+    },
+    {
+      "id": "1.1.13",
+      "title": "La paradoja del control",
+      "subtitle": "Por qué más control puede resultar en menos control",
+      "type": "advanced",
+      "xp": 50,
+      "prerequisites": ["1.1.05", "1.1.08"],
+      "isTool": false,
+      "isNew": false,
+      "isReframed": false,
+      "crossPillarLinks": [],
+      "auditNote": null
+    },
+    {
+      "id": "1.1.14",
+      "title": "Efectos de red",
+      "subtitle": "El valor crece con cada nodo conectado",
+      "type": "intermediate",
+      "xp": 75,
+      "prerequisites": ["1.1.04"],
+      "isTool": true,
+      "isNew": true,
+      "isReframed": false,
+      "crossPillarLinks": [
+        {
+          "targetId": "1.4.06",
+          "priority": "medium",
+          "reason": "Efectos de red como juegos de suma positiva"
+        }
+      ],
+      "auditNote": "NUEVA (Auditoría v2.0). Bucles de refuerzo aplicados a redes. Explica idiomas dominantes, monopolios naturales, estándares tecnológicos."
+    }
+  ],
+  "bossFight": {
+    "id": "bf-1.1",
+    "moduleId": "1.1",
+    "title": "Boss Fight: El Cartógrafo de Sistemas",
+    "description": "Selecciona un sistema real (ecosistema, mercado, organización, tu propio negocio). Mapea sus elementos e identifica: (a) al menos 2 bucles de retroalimentación (uno positivo, uno negativo), (b) 1 punto de apalancamiento donde una intervención pequeña tendría impacto grande, (c) 1 arquetipo sistémico en operación. Bonus: identifica un efecto de red si existe. Entrega: análisis escrito de 1-2 páginas.",
+    "xp": 150,
+    "prerequisites": [
+      "1.1.01", "1.1.02", "1.1.03", "1.1.04", "1.1.05",
+      "1.1.06", "1.1.07", "1.1.08", "1.1.09", "1.1.10",
+      "1.1.11", "1.1.12", "1.1.13", "1.1.14"
+    ]
+  }
+}
