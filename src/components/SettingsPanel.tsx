@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../stores/useGameStore';
-import { X, Key, Info, Download, Upload, AlertCircle, CheckCircle, ExternalLink, ShieldCheck } from 'lucide-react';
+import { X, Key, Info, Download, Upload, AlertCircle, CheckCircle, ExternalLink, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface Props {
@@ -9,14 +9,17 @@ interface Props {
 }
 
 export const SettingsPanel: React.FC<Props> = ({ isOpen, onClose }) => {
-    const { apiKey, setApiKey, exportAllContent, importAllContent, syncToCloud, loadFromCloud, syncStatus } = useGameStore();
+    const { apiKey, setApiKey, exportAllContent, importAllContent, syncToCloud, loadFromCloud, syncStatus, deviceId, setSyncId, resetProgress } = useGameStore();
     const [tempKey, setTempKey] = useState(apiKey || "");
+    const [tempSyncId, setTempSyncId] = useState(deviceId || "");
     const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
 
     const handleSave = () => {
         setApiKey(tempKey);
+        setSyncId(tempSyncId);
         onClose();
     };
+
 
     const handleExport = () => {
         const data = exportAllContent();
@@ -156,6 +159,22 @@ export const SettingsPanel: React.FC<Props> = ({ isOpen, onClose }) => {
                                     <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-400">Progreso en la Nube (Supabase)</h3>
                                 </div>
 
+                                <div className="mb-4">
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-2">Sync ID (Dispositivo/Usuario)</label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={tempSyncId}
+                                            onChange={(e) => setTempSyncId(e.target.value)}
+                                            placeholder="ej. mi-pc-trabajo-123"
+                                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-blue-500/50 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-white/30 font-medium mt-2">
+                                        Modifica tu ID para sincronizar con otro equipo. Usa el mismo ID en casa y trabajo.
+                                    </p>
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-3 mb-4">
                                     <button
                                         onClick={syncToCloud}
@@ -164,17 +183,21 @@ export const SettingsPanel: React.FC<Props> = ({ isOpen, onClose }) => {
                                     >
                                         <Upload size={20} className={`mb-2 ${syncStatus === 'syncing' ? 'animate-bounce text-blue-400' : 'text-white/40 group-hover:text-blue-400'}`} />
                                         <span className="text-[9px] uppercase tracking-widest">
-                                            {syncStatus === 'syncing' ? 'Guardando...' : 'Guardar'}
+                                            {syncStatus === 'syncing' ? 'Guardando...' : 'Guardar Nube'}
                                         </span>
                                     </button>
 
                                     <button
-                                        onClick={loadFromCloud}
+                                        onClick={() => {
+                                            // Ensure Sync ID is set locally before loading.
+                                            setSyncId(tempSyncId);
+                                            loadFromCloud();
+                                        }}
                                         disabled={syncStatus === 'syncing'}
                                         className="flex flex-col items-center justify-center p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all font-black text-white group disabled:opacity-50 disabled:cursor-wait"
                                     >
                                         <Download size={20} className="mb-2 text-white/40 group-hover:text-amber-400" />
-                                        <span className="text-[9px] uppercase tracking-widest">Cargar</span>
+                                        <span className="text-[9px] uppercase tracking-widest">Cargar Nube</span>
                                     </button>
                                 </div>
 
@@ -190,11 +213,8 @@ export const SettingsPanel: React.FC<Props> = ({ isOpen, onClose }) => {
                                         <span className="text-xs font-bold">Error al sincronizar con la nube</span>
                                     </div>
                                 )}
-
-                                <p className="text-[10px] text-white/30 leading-relaxed font-medium">
-                                    Sincroniza tu progreso maestro (XP, items, configuraciones) con tu cuenta.
-                                </p>
                             </section>
+
 
                             <section className="pt-6 border-t border-white/5 space-y-4">
                                 <div className="flex items-center gap-2 mb-2">
@@ -244,6 +264,26 @@ export const SettingsPanel: React.FC<Props> = ({ isOpen, onClose }) => {
                                     className="w-full py-4 border border-yellow-500/40 rounded-2xl text-[10px] font-black uppercase tracking-widest text-yellow-500 hover:bg-yellow-500/5 transition-all"
                                 >
                                     Simular Victoria Jefe
+                                </button>
+                            </section>
+
+                            {/* Danger Zone */}
+                            <section className="pt-6 border-t border-red-500/20">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <AlertTriangle size={14} className="text-red-500" />
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-red-500">Zona de Peligro</h3>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        if (window.confirm("¿Estás seguro de que quieres empezar de cero? Perderás todo el progreso, nivel y XP. Esto NO se puede deshacer a menos que tengas un backup.")) {
+                                            resetProgress();
+                                            onClose();
+                                        }
+                                    }}
+                                    className="w-full py-4 bg-red-500/10 border border-red-500/40 rounded-2xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/20 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <AlertTriangle size={14} />
+                                    Empezar de Cero (Reset)
                                 </button>
                             </section>
 

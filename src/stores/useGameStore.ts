@@ -2,8 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { GameState, ReviewItem, ConceptCard, ActivatedCombo, TeachingTaxEntry, DailyQuest, ShadowQuest, TimeAttack, MirrorMatch, Debuff, RunSummary } from '../types';
 import { LEVELS } from '../data/levels';
-import { PILLARS } from '../data/pillars';
-import { ALL_CARDS, ALL_BOSS_FIGHTS } from '../data/all-modules';
 import { supabase } from '../lib/supabase';
 
 interface GameActions {
@@ -62,6 +60,8 @@ interface GameActions {
     closeCapstonePanel: () => void;
     completeCapstone: (submission: string) => void;
     startNewGamePlus: () => void;
+    setSyncId: (id: string) => void;
+    resetProgress: () => void;
 }
 
 export const XP_VALUES = {
@@ -1013,6 +1013,50 @@ export const useGameStore = create<GameState & GameActions>()(
 
                 get().checkAchievements();
             },
+
+            setSyncId: (id: string) => set({ deviceId: id, lastSaved: Date.now() }),
+
+            resetProgress: () => set(() => ({
+                xp: 0,
+                completedCardIds: [],
+                completedBossFights: [],
+                completedMilestones: [],
+                activatedCombos: [],
+                reviews: [],
+                unlockedAchievements: [],
+                latestUnlockedAchievement: null,
+                streakDays: 0,
+                maxStreakDays: 0,
+                statsVisitCount: 0,
+                studyLog: [],
+                taxesPaid: [],
+                nextTaxAt: 10,
+                currentTaxCard: null,
+                isTaxDue: false,
+                dailyQuest: null,
+                questHistory: [],
+                activeShadowQuest: null,
+                shadowQuestHistory: [],
+                activeTimeAttack: null,
+                timeAttackHistory: [],
+                activeMirrorMatch: null,
+                mirrorMatchHistory: [],
+                debuffHistory: [],
+                capstone: {
+                    isUnlocked: false,
+                    isCompleted: false,
+                    completedAt: null,
+                    submission: null,
+                    xpReward: 500
+                },
+                ngPlus: {
+                    isAvailable: false,
+                    ngPlusCount: 0,
+                    previousRuns: []
+                },
+                lastSaved: Date.now(),
+                // Conservamos api key, contentStore y cache
+            })),
         }),
         {
             name: 'polymath-game-state',

@@ -209,7 +209,7 @@ export interface GameState {
     streakDays: number;
     maxStreakDays: number;
     statsVisitCount: number;
-    pendingCelebration: 'levelup' | 'boss' | null;
+    pendingCelebration: 'levelup' | 'boss' | 'achievement' | null;
     lastXPGain: { amount: number, timestamp: number } | null;
     studyLog: string[]; // Array of YYYY-MM-DD strings
     lastSaved: number;
