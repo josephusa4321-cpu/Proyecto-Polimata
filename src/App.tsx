@@ -22,9 +22,15 @@ import { CapstonePanel } from './components/CapstonePanel'
 import { MissionsPanel } from './components/MissionsPanel'
 import { StatsDashboard } from './components/StatsDashboard'
 
+const AUTO_SYNC_DEBOUNCE_MS = 1200
+let hasBootstrappedCloudSync = false
+
 const App: React.FC = () => {
-  const { incrementStatsVisit } = useGameStore();
+  const { incrementStatsVisit, loadFromCloud, syncToCloud, lastSaved } = useGameStore();
   const [currentView, setCurrentView] = useState<ViewType>('skilltree');
+  const autoSyncReadyRef = React.useRef(false);
+  const previousLastSavedRef = React.useRef(lastSaved);
+  const autoSyncTimerRef = React.useRef<number | null>(null);
 
   const handleViewChange = (view: ViewType) => {
     setCurrentView(view);
@@ -32,6 +38,59 @@ const App: React.FC = () => {
       incrementStatsVisit();
     }
   };
+
+  React.useEffect(() => {
+    if (hasBootstrappedCloudSync) {
+      autoSyncReadyRef.current = true;
+      previousLastSavedRef.current = useGameStore.getState().lastSaved;
+      return;
+    }
+
+    hasBootstrappedCloudSync = true;
+    let isActive = true;
+
+    void loadFromCloud({ trigger: 'auto' }).finally(() => {
+      if (!isActive) {
+        return;
+      }
+
+      autoSyncReadyRef.current = true;
+      previousLastSavedRef.current = useGameStore.getState().lastSaved;
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [loadFromCloud]);
+
+  React.useEffect(() => {
+    if (!autoSyncReadyRef.current) {
+      previousLastSavedRef.current = lastSaved;
+      return;
+    }
+
+    if (lastSaved <= previousLastSavedRef.current) {
+      previousLastSavedRef.current = lastSaved;
+      return;
+    }
+
+    previousLastSavedRef.current = lastSaved;
+
+    if (autoSyncTimerRef.current) {
+      window.clearTimeout(autoSyncTimerRef.current);
+    }
+
+    autoSyncTimerRef.current = window.setTimeout(() => {
+      void syncToCloud({ trigger: 'auto' });
+    }, AUTO_SYNC_DEBOUNCE_MS);
+
+    return () => {
+      if (autoSyncTimerRef.current) {
+        window.clearTimeout(autoSyncTimerRef.current);
+        autoSyncTimerRef.current = null;
+      }
+    };
+  }, [lastSaved, syncToCloud]);
 
   return (
     <div className="min-h-screen bg-background text-white selection:bg-primary/30 selection:text-primary-foreground">

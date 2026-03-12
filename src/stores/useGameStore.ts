@@ -4,6 +4,152 @@ import type { GameState, ReviewItem, ConceptCard, ActivatedCombo, TeachingTaxEnt
 import { LEVELS } from '../data/levels';
 import { supabase } from '../lib/supabase';
 
+const SUPABASE_NO_ROWS_ERROR = 'PGRST116';
+const SYNC_STATUS_RESET_MS = 3000;
+
+type SyncTrigger = 'manual' | 'auto';
+type SyncOptions = {
+    trigger?: SyncTrigger;
+};
+
+type CloudGameState = {
+    activePillar: GameState['activePillar'];
+    activeModuleId: GameState['activeModuleId'];
+    xp: GameState['xp'];
+    completedMilestones: GameState['completedMilestones'];
+    completedCardIds: GameState['completedCardIds'];
+    completedBossFights: GameState['completedBossFights'];
+    activatedCombos: GameState['activatedCombos'];
+    reviews: GameState['reviews'];
+    contentStore: GameState['contentStore'];
+    unlockedAchievements: GameState['unlockedAchievements'];
+    streakDays: GameState['streakDays'];
+    maxStreakDays: GameState['maxStreakDays'];
+    statsVisitCount: GameState['statsVisitCount'];
+    studyLog: GameState['studyLog'];
+    lastSaved: GameState['lastSaved'];
+    taxesPaid: GameState['taxesPaid'];
+    nextTaxAt: GameState['nextTaxAt'];
+    currentTaxCard: GameState['currentTaxCard'];
+    isTaxDue: GameState['isTaxDue'];
+    dailyQuest: GameState['dailyQuest'];
+    questHistory: GameState['questHistory'];
+    activeShadowQuest: GameState['activeShadowQuest'];
+    shadowQuestHistory: GameState['shadowQuestHistory'];
+    activeMirrorMatch: GameState['activeMirrorMatch'];
+    mirrorMatchHistory: GameState['mirrorMatchHistory'];
+    activeTimeAttack: GameState['activeTimeAttack'];
+    timeAttackHistory: GameState['timeAttackHistory'];
+    debuffHistory: GameState['debuffHistory'];
+    capstone: GameState['capstone'];
+    ngPlus: GameState['ngPlus'];
+};
+
+let syncStatusTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const queueSyncStatusReset = (set: (partial: Partial<GameState & GameActions>) => void) => {
+    if (syncStatusTimeout) {
+        clearTimeout(syncStatusTimeout);
+    }
+
+    syncStatusTimeout = setTimeout(() => {
+        set({ syncStatus: 'idle' });
+    }, SYNC_STATUS_RESET_MS);
+};
+
+const resolveCloudSyncKey = (state: GameState) => {
+    const trimmedKey = state.cloudSyncKey.trim();
+    return trimmedKey.length > 0 ? trimmedKey : state.deviceId;
+};
+
+const formatSyncError = (error: unknown) => {
+    if (error && typeof error === 'object') {
+        const syncError = error as { message?: string; details?: string; hint?: string; code?: string };
+        const parts = [syncError.message, syncError.details, syncError.hint, syncError.code].filter(Boolean);
+        if (parts.length > 0) {
+            return parts.join(' | ');
+        }
+    }
+
+    if (error instanceof Error) {
+        return error.message;
+    }
+
+    return 'No se pudo sincronizar con Supabase.';
+};
+
+const buildCloudGameState = (state: GameState): CloudGameState => ({
+    activePillar: state.activePillar,
+    activeModuleId: state.activeModuleId,
+    xp: state.xp,
+    completedMilestones: state.completedMilestones,
+    completedCardIds: state.completedCardIds,
+    completedBossFights: state.completedBossFights,
+    activatedCombos: state.activatedCombos,
+    reviews: state.reviews,
+    contentStore: state.contentStore,
+    unlockedAchievements: state.unlockedAchievements,
+    streakDays: state.streakDays,
+    maxStreakDays: state.maxStreakDays,
+    statsVisitCount: state.statsVisitCount,
+    studyLog: state.studyLog,
+    lastSaved: state.lastSaved,
+    taxesPaid: state.taxesPaid,
+    nextTaxAt: state.nextTaxAt,
+    currentTaxCard: state.currentTaxCard,
+    isTaxDue: state.isTaxDue,
+    dailyQuest: state.dailyQuest,
+    questHistory: state.questHistory,
+    activeShadowQuest: state.activeShadowQuest,
+    shadowQuestHistory: state.shadowQuestHistory,
+    activeMirrorMatch: state.activeMirrorMatch,
+    mirrorMatchHistory: state.mirrorMatchHistory,
+    activeTimeAttack: state.activeTimeAttack,
+    timeAttackHistory: state.timeAttackHistory,
+    debuffHistory: state.debuffHistory,
+    capstone: state.capstone,
+    ngPlus: state.ngPlus,
+});
+
+const mergeCloudState = (localState: GameState, cloudState: Partial<CloudGameState>): Partial<GameState> => ({
+    activePillar: cloudState.activePillar ?? localState.activePillar,
+    activeModuleId: cloudState.activeModuleId ?? localState.activeModuleId,
+    xp: cloudState.xp ?? localState.xp,
+    completedMilestones: cloudState.completedMilestones ?? localState.completedMilestones,
+    completedCardIds: cloudState.completedCardIds ?? localState.completedCardIds,
+    completedBossFights: cloudState.completedBossFights ?? localState.completedBossFights,
+    activatedCombos: cloudState.activatedCombos ?? localState.activatedCombos,
+    reviews: cloudState.reviews ?? localState.reviews,
+    contentStore: cloudState.contentStore ?? localState.contentStore,
+    unlockedAchievements: cloudState.unlockedAchievements ?? localState.unlockedAchievements,
+    streakDays: cloudState.streakDays ?? localState.streakDays,
+    maxStreakDays: cloudState.maxStreakDays ?? localState.maxStreakDays,
+    statsVisitCount: cloudState.statsVisitCount ?? localState.statsVisitCount,
+    studyLog: cloudState.studyLog ?? localState.studyLog,
+    lastSaved: cloudState.lastSaved ?? localState.lastSaved,
+    taxesPaid: cloudState.taxesPaid ?? localState.taxesPaid,
+    nextTaxAt: cloudState.nextTaxAt ?? localState.nextTaxAt,
+    currentTaxCard: cloudState.currentTaxCard ?? localState.currentTaxCard,
+    isTaxDue: cloudState.isTaxDue ?? localState.isTaxDue,
+    dailyQuest: cloudState.dailyQuest ?? localState.dailyQuest,
+    questHistory: cloudState.questHistory ?? localState.questHistory,
+    activeShadowQuest: cloudState.activeShadowQuest ?? localState.activeShadowQuest,
+    shadowQuestHistory: cloudState.shadowQuestHistory ?? localState.shadowQuestHistory,
+    activeMirrorMatch: cloudState.activeMirrorMatch ?? localState.activeMirrorMatch,
+    mirrorMatchHistory: cloudState.mirrorMatchHistory ?? localState.mirrorMatchHistory,
+    activeTimeAttack: cloudState.activeTimeAttack ?? localState.activeTimeAttack,
+    timeAttackHistory: cloudState.timeAttackHistory ?? localState.timeAttackHistory,
+    debuffHistory: cloudState.debuffHistory ?? localState.debuffHistory,
+    capstone: cloudState.capstone ?? localState.capstone,
+    ngPlus: cloudState.ngPlus ?? localState.ngPlus,
+    taxModalOpen: false,
+    shadowQuestModalOpen: false,
+    mirrorMatchModalOpen: false,
+    timeAttackModalOpen: false,
+    debuffPanelOpen: false,
+    capstonePanelOpen: false,
+});
+
 interface GameActions {
     addXP: (amount: number) => void;
     completeCard: (cardId: string, xp: number) => void;
@@ -26,9 +172,10 @@ interface GameActions {
     editingCardId: string | null;
     completeBossFight: (bfId: string, xp: number) => void;
     addCombo: (combo: Omit<ActivatedCombo, 'timestamp'>) => void;
-    syncToCloud: () => Promise<void>;
-    loadFromCloud: () => Promise<void>;
+    syncToCloud: (options?: SyncOptions) => Promise<void>;
+    loadFromCloud: (options?: SyncOptions) => Promise<void>;
     clearSyncStatus: () => void;
+    setCloudSyncKey: (key: string) => void;
     checkMilestones: () => void;
     checkAchievements: () => void;
     recordActivity: () => void;
@@ -79,7 +226,10 @@ export const useGameStore = create<GameState & GameActions>()(
     persist(
         (set, get) => ({
             deviceId: crypto.randomUUID ? crypto.randomUUID() : 'local-' + Date.now(),
+            cloudSyncKey: '',
             syncStatus: 'idle',
+            syncMessage: null,
+            syncErrorMessage: null,
             lastSynced: null,
             activePillar: null,
             activeModuleId: '1.1',
@@ -365,79 +515,129 @@ export const useGameStore = create<GameState & GameActions>()(
             },
 
             incrementStatsVisit: () => {
-                set((state) => ({ statsVisitCount: state.statsVisitCount + 1 }));
+                set((state) => ({
+                    statsVisitCount: state.statsVisitCount + 1,
+                    lastSaved: Date.now()
+                }));
                 get().checkAchievements();
             },
 
-            clearSyncStatus: () => set({ syncStatus: 'idle' }),
+            clearSyncStatus: () => set({ syncStatus: 'idle', syncMessage: null, syncErrorMessage: null }),
+            setCloudSyncKey: (key: string) => set({ cloudSyncKey: key.trim() }),
 
-            syncToCloud: async () => {
-                set({ syncStatus: 'syncing' });
+            syncToCloud: async ({ trigger = 'manual' } = {}) => {
+                if (trigger === 'manual') {
+                    set({ syncStatus: 'syncing', syncMessage: null, syncErrorMessage: null });
+                } else {
+                    set({ syncErrorMessage: null });
+                }
+
                 try {
                     const state = get();
-                    const gameState = {
-                        xp: state.xp,
-                        completedMilestones: state.completedMilestones,
-                        completedCardIds: state.completedCardIds,
-                        completedBossFights: state.completedBossFights,
-                        unlockedAchievements: state.unlockedAchievements,
-                        contentStore: state.contentStore,
-                        lastSaved: state.lastSaved
-                    };
+                    const syncKey = resolveCloudSyncKey(state);
+                    const gameState = buildCloudGameState(state);
                     
                     const { error } = await supabase
                         .from('user_progress')
                         .upsert({
-                            device_id: state.deviceId,
+                            device_id: syncKey,
                             game_state: gameState,
                             updated_at: new Date().toISOString()
                         }, { onConflict: 'device_id' });
                         
                     if (error) throw error;
-                    
-                    set({ syncStatus: 'success', lastSynced: Date.now() });
-                    setTimeout(() => set({ syncStatus: 'idle' }), 3000);
-                } catch (e) {
-                    console.error("Sync error:", e);
-                    set({ syncStatus: 'error' });
-                    setTimeout(() => set({ syncStatus: 'idle' }), 3000);
+
+                    if (trigger === 'manual') {
+                        set({
+                            syncStatus: 'success',
+                            syncMessage: `Progreso guardado en la nube con la clave ${syncKey}.`,
+                            syncErrorMessage: null,
+                            lastSynced: Date.now()
+                        });
+                        queueSyncStatusReset(set);
+                    } else {
+                        set({
+                            syncStatus: 'idle',
+                            syncMessage: null,
+                            syncErrorMessage: null,
+                            lastSynced: Date.now()
+                        });
+                    }
+                } catch (error) {
+                    const message = formatSyncError(error);
+                    console.error("Sync error:", error);
+                    set({
+                        syncStatus: 'error',
+                        syncMessage: null,
+                        syncErrorMessage: message
+                    });
+                    queueSyncStatusReset(set);
                 }
             },
 
-            loadFromCloud: async () => {
-                set({ syncStatus: 'syncing' });
+            loadFromCloud: async ({ trigger = 'manual' } = {}) => {
+                if (trigger === 'manual') {
+                    set({ syncStatus: 'syncing', syncMessage: null, syncErrorMessage: null });
+                }
+
                 try {
                     const state = get();
+                    const syncKey = resolveCloudSyncKey(state);
                     const { data, error } = await supabase
                         .from('user_progress')
                         .select('game_state')
-                        .eq('device_id', state.deviceId)
+                        .eq('device_id', syncKey)
                         .single();
                         
-                    if (error && error.code !== 'PGRST116') throw error; // ignore no rows error
-                    
+                    if (error && error.code !== SUPABASE_NO_ROWS_ERROR) throw error;
+
                     if (data && data.game_state) {
-                        const cloudState = data.game_state;
-                        set((s) => ({
-                            ...s,
-                            xp: cloudState.xp ?? s.xp,
-                            completedMilestones: cloudState.completedMilestones || s.completedMilestones,
-                            completedCardIds: cloudState.completedCardIds || s.completedCardIds,
-                            completedBossFights: cloudState.completedBossFights || s.completedBossFights,
-                            unlockedAchievements: cloudState.unlockedAchievements || s.unlockedAchievements,
-                            contentStore: cloudState.contentStore || s.contentStore,
-                            lastSaved: cloudState.lastSaved || s.lastSaved,
-                            syncStatus: 'success',
-                            lastSynced: Date.now()
-                        }));
+                        const cloudState = data.game_state as Partial<CloudGameState>;
+                        const cloudLastSaved = cloudState.lastSaved ?? 0;
+                        const localLastSaved = state.lastSaved ?? 0;
+
+                        if (cloudLastSaved > localLastSaved) {
+                            set((localState) => ({
+                                ...mergeCloudState(localState, cloudState),
+                                syncStatus: trigger === 'manual' ? 'success' : 'idle',
+                                syncMessage: trigger === 'manual'
+                                    ? `Se cargó la copia de nube más reciente para ${syncKey}.`
+                                    : null,
+                                syncErrorMessage: null,
+                                lastSynced: Date.now()
+                            }));
+                        } else {
+                            set({
+                                syncStatus: trigger === 'manual' ? 'success' : 'idle',
+                                syncMessage: trigger === 'manual'
+                                    ? 'La copia local ya era más reciente; no se sobrescribió.'
+                                    : null,
+                                syncErrorMessage: null,
+                                lastSynced: Date.now()
+                            });
+                        }
                     } else {
-                        set({ syncStatus: 'success' }); 
+                        set({
+                            syncStatus: trigger === 'manual' ? 'success' : 'idle',
+                            syncMessage: trigger === 'manual'
+                                ? 'No había progreso en la nube todavía para esta clave.'
+                                : null,
+                            syncErrorMessage: null
+                        });
                     }
-                    setTimeout(() => set({ syncStatus: 'idle' }), 3000);
-                } catch (e) {
-                    console.error("Load error:", e);
-                    set({ syncStatus: 'error' });
-                    setTimeout(() => set({ syncStatus: 'idle' }), 3000);
+
+                    if (trigger === 'manual') {
+                        queueSyncStatusReset(set);
+                    }
+                } catch (error) {
+                    const message = formatSyncError(error);
+                    console.error("Load error:", error);
+                    set({
+                        syncStatus: 'error',
+                        syncMessage: null,
+                        syncErrorMessage: message
+                    });
+                    queueSyncStatusReset(set);
                 }
             },
 
@@ -474,7 +674,6 @@ export const useGameStore = create<GameState & GameActions>()(
                                 lastSaved: Date.now()
                             };
                         });
-                        set({ pendingCelebration: 'achievement' });
                     }
                 });
             },
