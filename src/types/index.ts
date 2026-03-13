@@ -204,9 +204,51 @@ export interface CapstoneState {
     xpReward: number;               // 500 XP
 }
 
+export interface UserProgressState {
+    xp: number;
+    completedMilestones: string[];
+    completedCardIds: string[];
+    completedBossFights: string[];
+    activatedCombos: ActivatedCombo[];
+    reviews: ReviewItem[];
+    responseDrafts: Record<string, SavedResponseDraft>;
+    unlockedAchievements: UnlockedAchievement[];
+    streakDays: number;
+    maxStreakDays: number;
+    studyLog: string[];
+    taxesPaid: TeachingTaxEntry[];
+    nextTaxAt: number;
+    currentTaxCard: string | null;
+    isTaxDue: boolean;
+    dailyQuest: DailyQuest | null;
+    questHistory: DailyQuest[];
+    activeShadowQuest: ShadowQuest | null;
+    shadowQuestHistory: ShadowQuest[];
+    activeMirrorMatch: MirrorMatch | null;
+    mirrorMatchHistory: MirrorMatch[];
+    activeTimeAttack: TimeAttack | null;
+    timeAttackHistory: TimeAttack[];
+    debuffHistory: Debuff[];
+    capstone: CapstoneState;
+    ngPlus: NewGamePlusState;
+    lastSaved: number;
+}
+
+export interface PersistedUserState {
+    progress: UserProgressState;
+    deviceId: string;
+    cloudSyncKey: string;
+    apiKey: string | null;
+    contentCache: Record<string, CachedContent>;
+    contentStore: Record<string, CardContent>;
+    activePillar: number | null;
+    activeModuleId: string;
+}
+
 export interface GameState {
     deviceId: string;
     cloudSyncKey: string;
+    progress: UserProgressState;
     responseDrafts: Record<string, SavedResponseDraft>;
     syncStatus: 'idle' | 'syncing' | 'error' | 'success';
     syncMessage: string | null;

@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { GameState, ReviewItem, ConceptCard, ActivatedCombo, TeachingTaxEntry, DailyQuest, ShadowQuest, TimeAttack, MirrorMatch, Debuff, RunSummary } from '../types';
+import type { GameState, ReviewItem, ConceptCard, ActivatedCombo, TeachingTaxEntry, DailyQuest, ShadowQuest, TimeAttack, MirrorMatch, Debuff, RunSummary, PersistedUserState, UserProgressState } from '../types';
 import { LEVELS } from '../data/levels';
 import { supabase } from '../lib/supabase';
-import { mergeResponseDrafts, normalizeResponseDrafts } from '../utils/savedResponses';
+import { getDefaultStoreState, buildProgressFromState, getProgressMirror, mergeProgressState, migrateLegacyProgressState } from './progressState';
 
 const SUPABASE_NO_ROWS_ERROR = 'PGRST116';
 const SYNC_STATUS_RESET_MS = 3000;
@@ -14,37 +14,7 @@ type SyncOptions = {
 };
 
 type CloudGameState = {
-    activePillar: GameState['activePillar'];
-    activeModuleId: GameState['activeModuleId'];
-    xp: GameState['xp'];
-    responseDrafts: GameState['responseDrafts'];
-    completedMilestones: GameState['completedMilestones'];
-    completedCardIds: GameState['completedCardIds'];
-    completedBossFights: GameState['completedBossFights'];
-    activatedCombos: GameState['activatedCombos'];
-    reviews: GameState['reviews'];
-    contentStore: GameState['contentStore'];
-    unlockedAchievements: GameState['unlockedAchievements'];
-    streakDays: GameState['streakDays'];
-    maxStreakDays: GameState['maxStreakDays'];
-    statsVisitCount: GameState['statsVisitCount'];
-    studyLog: GameState['studyLog'];
-    lastSaved: GameState['lastSaved'];
-    taxesPaid: GameState['taxesPaid'];
-    nextTaxAt: GameState['nextTaxAt'];
-    currentTaxCard: GameState['currentTaxCard'];
-    isTaxDue: GameState['isTaxDue'];
-    dailyQuest: GameState['dailyQuest'];
-    questHistory: GameState['questHistory'];
-    activeShadowQuest: GameState['activeShadowQuest'];
-    shadowQuestHistory: GameState['shadowQuestHistory'];
-    activeMirrorMatch: GameState['activeMirrorMatch'];
-    mirrorMatchHistory: GameState['mirrorMatchHistory'];
-    activeTimeAttack: GameState['activeTimeAttack'];
-    timeAttackHistory: GameState['timeAttackHistory'];
-    debuffHistory: GameState['debuffHistory'];
-    capstone: GameState['capstone'];
-    ngPlus: GameState['ngPlus'];
+    progress: UserProgressState;
 };
 
 let syncStatusTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -81,88 +51,40 @@ const formatSyncError = (error: unknown) => {
 };
 
 const buildCloudGameState = (state: GameState): CloudGameState => ({
-    activePillar: state.activePillar,
-    activeModuleId: state.activeModuleId,
-    xp: state.xp,
-    responseDrafts: state.responseDrafts,
-    completedMilestones: state.completedMilestones,
-    completedCardIds: state.completedCardIds,
-    completedBossFights: state.completedBossFights,
-    activatedCombos: state.activatedCombos,
-    reviews: state.reviews,
-    contentStore: state.contentStore,
-    unlockedAchievements: state.unlockedAchievements,
-    streakDays: state.streakDays,
-    maxStreakDays: state.maxStreakDays,
-    statsVisitCount: state.statsVisitCount,
-    studyLog: state.studyLog,
-    lastSaved: state.lastSaved,
-    taxesPaid: state.taxesPaid,
-    nextTaxAt: state.nextTaxAt,
-    currentTaxCard: state.currentTaxCard,
-    isTaxDue: state.isTaxDue,
-    dailyQuest: state.dailyQuest,
-    questHistory: state.questHistory,
-    activeShadowQuest: state.activeShadowQuest,
-    shadowQuestHistory: state.shadowQuestHistory,
-    activeMirrorMatch: state.activeMirrorMatch,
-    mirrorMatchHistory: state.mirrorMatchHistory,
-    activeTimeAttack: state.activeTimeAttack,
-    timeAttackHistory: state.timeAttackHistory,
-    debuffHistory: state.debuffHistory,
-    capstone: state.capstone,
-    ngPlus: state.ngPlus,
+    progress: buildProgressFromState(state),
 });
 
-const normalizeCloudState = (cloudState: Partial<CloudGameState>) => ({
-    ...cloudState,
-    responseDrafts: normalizeResponseDrafts(cloudState.responseDrafts, cloudState.lastSaved ?? Date.now())
-});
+const normalizeCloudState = (cloudState: Partial<CloudGameState> | Partial<GameState>) => {
+    const progressSource = 'progress' in cloudState && cloudState.progress ? cloudState.progress : cloudState;
+    const fallbackLastSaved = (
+        ('lastSaved' in progressSource ? progressSource.lastSaved : undefined)
+        ?? ('lastSaved' in cloudState ? cloudState.lastSaved : undefined)
+        ?? Date.now()
+    );
 
-const mergeCloudState = (localState: GameState, cloudState: Partial<CloudGameState>): Partial<GameState> => ({
-    activePillar: cloudState.activePillar ?? localState.activePillar,
-    activeModuleId: cloudState.activeModuleId ?? localState.activeModuleId,
-    xp: cloudState.xp ?? localState.xp,
-    responseDrafts: mergeResponseDrafts(
-        localState.responseDrafts,
-        cloudState.responseDrafts,
-        localState.lastSaved ?? Date.now(),
-        cloudState.lastSaved ?? localState.lastSaved ?? Date.now()
-    ),
-    completedMilestones: cloudState.completedMilestones ?? localState.completedMilestones,
-    completedCardIds: cloudState.completedCardIds ?? localState.completedCardIds,
-    completedBossFights: cloudState.completedBossFights ?? localState.completedBossFights,
-    activatedCombos: cloudState.activatedCombos ?? localState.activatedCombos,
-    reviews: cloudState.reviews ?? localState.reviews,
-    contentStore: cloudState.contentStore ?? localState.contentStore,
-    unlockedAchievements: cloudState.unlockedAchievements ?? localState.unlockedAchievements,
-    streakDays: cloudState.streakDays ?? localState.streakDays,
-    maxStreakDays: cloudState.maxStreakDays ?? localState.maxStreakDays,
-    statsVisitCount: cloudState.statsVisitCount ?? localState.statsVisitCount,
-    studyLog: cloudState.studyLog ?? localState.studyLog,
-    lastSaved: cloudState.lastSaved ?? localState.lastSaved,
-    taxesPaid: cloudState.taxesPaid ?? localState.taxesPaid,
-    nextTaxAt: cloudState.nextTaxAt ?? localState.nextTaxAt,
-    currentTaxCard: cloudState.currentTaxCard ?? localState.currentTaxCard,
-    isTaxDue: cloudState.isTaxDue ?? localState.isTaxDue,
-    dailyQuest: cloudState.dailyQuest ?? localState.dailyQuest,
-    questHistory: cloudState.questHistory ?? localState.questHistory,
-    activeShadowQuest: cloudState.activeShadowQuest ?? localState.activeShadowQuest,
-    shadowQuestHistory: cloudState.shadowQuestHistory ?? localState.shadowQuestHistory,
-    activeMirrorMatch: cloudState.activeMirrorMatch ?? localState.activeMirrorMatch,
-    mirrorMatchHistory: cloudState.mirrorMatchHistory ?? localState.mirrorMatchHistory,
-    activeTimeAttack: cloudState.activeTimeAttack ?? localState.activeTimeAttack,
-    timeAttackHistory: cloudState.timeAttackHistory ?? localState.timeAttackHistory,
-    debuffHistory: cloudState.debuffHistory ?? localState.debuffHistory,
-    capstone: cloudState.capstone ?? localState.capstone,
-    ngPlus: cloudState.ngPlus ?? localState.ngPlus,
-    taxModalOpen: false,
-    shadowQuestModalOpen: false,
-    mirrorMatchModalOpen: false,
-    timeAttackModalOpen: false,
-    debuffPanelOpen: false,
-    capstonePanelOpen: false,
-});
+    return {
+        progress: migrateLegacyProgressState(progressSource, fallbackLastSaved)
+    };
+};
+
+const syncStateWithProgress = (
+    currentState: GameState & GameActions,
+    partialState: Partial<GameState & GameActions>
+): Partial<GameState & GameActions> => {
+    const mergedState = {
+        ...currentState,
+        ...partialState
+    };
+    const nextProgress = partialState.progress
+        ? migrateLegacyProgressState(partialState.progress, partialState.lastSaved ?? currentState.lastSaved ?? Date.now())
+        : buildProgressFromState(mergedState);
+
+    return {
+        ...partialState,
+        progress: nextProgress,
+        ...getProgressMirror(nextProgress)
+    };
+};
 
 interface GameActions {
     addXP: (amount: number) => void;
@@ -240,66 +162,27 @@ export const XP_VALUES = {
 
 export const useGameStore = create<GameState & GameActions>()(
     persist(
-        (set, get) => ({
-            deviceId: crypto.randomUUID ? crypto.randomUUID() : 'local-' + Date.now(),
-            cloudSyncKey: '',
-            responseDrafts: {},
-            syncStatus: 'idle',
-            syncMessage: null,
-            syncErrorMessage: null,
-            lastSynced: null,
-            activePillar: null,
-            activeModuleId: '1.1',
-            xp: 0,
-            completedCardIds: [],
-            completedBossFights: [],
-            completedMilestones: [],
-            activatedCombos: [],
-            reviews: [],
-            apiKey: null,
-            contentCache: {},
-            contentStore: {},
-            editingCardId: null,
-            unlockedAchievements: [],
-            latestUnlockedAchievement: null,
-            streakDays: 0,
-            maxStreakDays: 0,
-            statsVisitCount: 0,
-            pendingCelebration: null,
-            lastXPGain: null,
-            studyLog: [],
-            lastSaved: Date.now(),
-            taxesPaid: [],
-            nextTaxAt: 10,
-            currentTaxCard: null,
-            isTaxDue: false,
-            taxModalOpen: false,
-            dailyQuest: null,
-            questHistory: [],
-            activeShadowQuest: null,
-            shadowQuestHistory: [],
-            shadowQuestModalOpen: false,
-            activeTimeAttack: null,
-            timeAttackHistory: [],
-            timeAttackModalOpen: false,
-            activeMirrorMatch: null,
-            mirrorMatchHistory: [],
-            mirrorMatchModalOpen: false,
-            debuffHistory: [],
-            debuffPanelOpen: false,
-            capstone: {
-                isUnlocked: false,
-                isCompleted: false,
-                completedAt: null,
-                submission: null,
-                xpReward: 500
-            },
-            capstonePanelOpen: false,
-            ngPlus: {
-                isAvailable: false,
-                ngPlusCount: 0,
-                previousRuns: []
-            },
+        (rawSet, get) => {
+            const set = (
+                partial: Partial<GameState & GameActions> | ((state: GameState & GameActions) => Partial<GameState & GameActions>)
+            ) => {
+                if (typeof partial === 'function') {
+                    return rawSet((state) => syncStateWithProgress(
+                        state as GameState & GameActions,
+                        partial(state as GameState & GameActions)
+                    ));
+                }
+
+                return rawSet((state) => syncStateWithProgress(
+                    state as GameState & GameActions,
+                    partial as Partial<GameState & GameActions>
+                ));
+            };
+
+            const defaultState = getDefaultStoreState();
+
+            return ({
+            ...defaultState,
 
             setActivePillar: (pillarId) => set({ activePillar: pillarId }),
             setActiveModuleId: (moduleId) => set({ activeModuleId: moduleId }),
@@ -412,7 +295,7 @@ export const useGameStore = create<GameState & GameActions>()(
                 return currentLevel;
             },
 
-            setApiKey: (key: string) => set({ apiKey: key, lastSaved: Date.now() }),
+            setApiKey: (key: string) => set({ apiKey: key }),
 
             getApiKey: () => get().apiKey,
 
@@ -420,8 +303,7 @@ export const useGameStore = create<GameState & GameActions>()(
                 contentCache: {
                     ...state.contentCache,
                     [cardId]: { cardId, content, generatedDate: Date.now() }
-                },
-                lastSaved: Date.now()
+                }
             })),
 
             getCachedContent: (cardId: string) => get().contentCache[cardId]?.content || null,
@@ -462,8 +344,7 @@ export const useGameStore = create<GameState & GameActions>()(
                 contentStore: {
                     ...state.contentStore,
                     [cardId]: { cardId, markdown, source: source || 'Manual', addedAt: Date.now() }
-                },
-                lastSaved: Date.now()
+                }
             })),
             
             hasContent: (cardId: string) => !!get().contentStore[cardId],
@@ -473,8 +354,7 @@ export const useGameStore = create<GameState & GameActions>()(
             removeContent: (cardId: string) => set((state) => {
                 const { [cardId]: _, ...rest } = state.contentStore;
                 return {
-                    contentStore: rest,
-                    lastSaved: Date.now()
+                    contentStore: rest
                 };
             }),
 
@@ -498,8 +378,7 @@ export const useGameStore = create<GameState & GameActions>()(
                         contentStore: {
                             ...state.contentStore,
                             ...data.cards
-                        },
-                        lastSaved: Date.now()
+                        }
                     }));
                     return { success: true, message: `Importadas ${Object.keys(data.cards).length} lecciones.` };
                 } catch (e) {
@@ -533,8 +412,7 @@ export const useGameStore = create<GameState & GameActions>()(
 
             incrementStatsVisit: () => {
                 set((state) => ({
-                    statsVisitCount: state.statsVisitCount + 1,
-                    lastSaved: Date.now()
+                    statsVisitCount: state.statsVisitCount + 1
                 }));
                 get().checkAchievements();
             },
@@ -637,29 +515,33 @@ export const useGameStore = create<GameState & GameActions>()(
                     if (error && error.code !== SUPABASE_NO_ROWS_ERROR) throw error;
 
                     if (data && data.game_state) {
-                        const cloudState = normalizeCloudState(data.game_state as Partial<CloudGameState>);
-                        const cloudLastSaved = cloudState.lastSaved ?? 0;
-                        const localLastSaved = state.lastSaved ?? 0;
+                        const cloudState = normalizeCloudState(data.game_state as Partial<CloudGameState> | Partial<GameState>);
+                        const cloudLastSaved = cloudState.progress.lastSaved ?? 0;
+                        const localLastSaved = state.progress.lastSaved ?? state.lastSaved ?? 0;
 
                         if (cloudLastSaved > localLastSaved) {
-                            set((localState) => ({
-                                ...mergeCloudState(localState, cloudState),
-                                syncStatus: trigger === 'manual' ? 'success' : 'idle',
-                                syncMessage: trigger === 'manual'
+                            set((localState) => {
+                                const mergedProgress = mergeProgressState(localState.progress, cloudState.progress);
+                                return {
+                                    progress: mergedProgress,
+                                    syncStatus: trigger === 'manual' ? 'success' : 'idle',
+                                    syncMessage: trigger === 'manual'
                                     ? `Se cargó la copia de nube más reciente para ${syncKey}.`
                                     : null,
                                 syncErrorMessage: null,
                                 lastSynced: Date.now()
-                            }));
+                                };
+                            });
                         } else {
-                            set({
+                            set((localState) => ({
+                                progress: mergeProgressState(localState.progress, cloudState.progress),
                                 syncStatus: trigger === 'manual' ? 'success' : 'idle',
                                 syncMessage: trigger === 'manual'
                                     ? 'La copia local ya era más reciente; no se sobrescribió.'
                                     : null,
                                 syncErrorMessage: null,
                                 lastSynced: Date.now()
-                            });
+                            }));
                         }
                     } else {
                         set({
@@ -1258,7 +1140,7 @@ export const useGameStore = create<GameState & GameActions>()(
                 get().checkAchievements();
             },
 
-            setSyncId: (id: string) => set({ deviceId: id, lastSaved: Date.now() }),
+            setSyncId: (id: string) => set({ deviceId: id }),
 
             resetProgress: () => set(() => ({
                 xp: 0,
@@ -1301,21 +1183,39 @@ export const useGameStore = create<GameState & GameActions>()(
                 responseDrafts: {},
                 lastSaved: Date.now(),
                 // Conservamos api key, contentStore y cache
-            })),
-        }),
+            }))
+            });
+        },
         {
             name: 'polymath-game-state',
+            partialize: (state) => ({
+                progress: buildProgressFromState(state),
+                deviceId: state.deviceId,
+                cloudSyncKey: state.cloudSyncKey,
+                apiKey: state.apiKey,
+                contentCache: state.contentCache,
+                contentStore: state.contentStore,
+                activePillar: state.activePillar,
+                activeModuleId: state.activeModuleId
+            }),
             merge: (persistedState, currentState) => {
-                const persisted = persistedState as Partial<GameState & GameActions>;
+                const persisted = persistedState as Partial<PersistedUserState & GameState>;
+                const mergedProgress = mergeProgressState(
+                    currentState.progress,
+                    persisted.progress ?? persisted
+                );
+
                 return {
                     ...currentState,
-                    ...persisted,
-                    responseDrafts: mergeResponseDrafts(
-                        currentState.responseDrafts,
-                        persisted.responseDrafts,
-                        currentState.lastSaved ?? Date.now(),
-                        persisted.lastSaved ?? currentState.lastSaved ?? Date.now()
-                    )
+                    deviceId: persisted.deviceId ?? currentState.deviceId,
+                    cloudSyncKey: persisted.cloudSyncKey ?? currentState.cloudSyncKey,
+                    apiKey: persisted.apiKey ?? currentState.apiKey,
+                    contentCache: persisted.contentCache ?? currentState.contentCache,
+                    contentStore: persisted.contentStore ?? currentState.contentStore,
+                    activePillar: persisted.activePillar ?? currentState.activePillar,
+                    activeModuleId: persisted.activeModuleId ?? currentState.activeModuleId,
+                    progress: mergedProgress,
+                    ...getProgressMirror(mergedProgress)
                 };
             }
         }
