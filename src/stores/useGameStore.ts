@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { GameState, ReviewItem, ConceptCard, ActivatedCombo, TeachingTaxEntry, DailyQuest, ShadowQuest, TimeAttack, MirrorMatch, Debuff, RunSummary, PersistedUserState, UserProgressState } from '../types';
 import { LEVELS } from '../data/levels';
 import { supabase } from '../lib/supabase';
-import { getDefaultStoreState, buildProgressFromState, getProgressMirror, mergeProgressState, migrateLegacyProgressState } from './progressState';
+import { getDefaultStoreState, buildProgressFromState, getProgressMirror, hasMeaningfulProgress, mergeProgressState, migrateLegacyProgressState } from './progressState';
 
 const SUPABASE_NO_ROWS_ERROR = 'PGRST116';
 const SYNC_STATUS_RESET_MS = 3000;
@@ -518,8 +518,10 @@ export const useGameStore = create<GameState & GameActions>()(
                         const cloudState = normalizeCloudState(data.game_state as Partial<CloudGameState> | Partial<GameState>);
                         const cloudLastSaved = cloudState.progress.lastSaved ?? 0;
                         const localLastSaved = state.progress.lastSaved ?? state.lastSaved ?? 0;
+                        const cloudHasProgress = hasMeaningfulProgress(cloudState.progress);
+                        const localHasProgress = hasMeaningfulProgress(state.progress);
 
-                        if (cloudLastSaved > localLastSaved) {
+                        if ((cloudHasProgress && !localHasProgress) || cloudLastSaved > localLastSaved) {
                             set((localState) => {
                                 const mergedProgress = mergeProgressState(localState.progress, cloudState.progress);
                                 return {

@@ -66,8 +66,34 @@ export const createInitialProgressState = (): UserProgressState => ({
         ngPlusCount: 0,
         previousRuns: createInitialRuns()
     },
-    lastSaved: Date.now()
+    lastSaved: 0
 });
+
+export const hasMeaningfulProgress = (progress: Partial<UserProgressState> | Partial<GameState>) => {
+    const normalized = migrateLegacyProgressState(progress, 0);
+
+    return normalized.xp > 0
+        || normalized.completedCardIds.length > 0
+        || normalized.completedBossFights.length > 0
+        || normalized.completedMilestones.length > 0
+        || normalized.reviews.length > 0
+        || normalized.unlockedAchievements.length > 0
+        || normalized.studyLog.length > 0
+        || normalized.taxesPaid.length > 0
+        || normalized.questHistory.length > 0
+        || normalized.shadowQuestHistory.length > 0
+        || normalized.mirrorMatchHistory.length > 0
+        || normalized.timeAttackHistory.length > 0
+        || normalized.debuffHistory.length > 0
+        || Object.keys(normalized.responseDrafts).length > 0
+        || normalized.dailyQuest?.completed === true
+        || normalized.activeShadowQuest !== null
+        || normalized.activeMirrorMatch !== null
+        || normalized.activeTimeAttack !== null
+        || normalized.capstone.isCompleted
+        || normalized.ngPlus.ngPlusCount > 0
+        || normalized.lastSaved > 0;
+};
 
 export const getProgressMirror = (progress: UserProgressState) => ({
     xp: progress.xp,
@@ -183,7 +209,13 @@ export const mergeProgressState = (
 ): UserProgressState => {
     const localProgress = migrateLegacyProgressState(local, local.lastSaved ?? Date.now());
     const incomingProgress = migrateLegacyProgressState(incoming, incoming.lastSaved ?? localProgress.lastSaved);
-    const incomingIsNewer = incomingProgress.lastSaved >= localProgress.lastSaved;
+    const localHasProgress = hasMeaningfulProgress(localProgress);
+    const incomingHasProgress = hasMeaningfulProgress(incomingProgress);
+    const incomingIsNewer = !localHasProgress && incomingHasProgress
+        ? true
+        : localHasProgress && !incomingHasProgress
+            ? false
+            : incomingProgress.lastSaved >= localProgress.lastSaved;
     const primary = incomingIsNewer ? incomingProgress : localProgress;
     const secondary = incomingIsNewer ? localProgress : incomingProgress;
 
