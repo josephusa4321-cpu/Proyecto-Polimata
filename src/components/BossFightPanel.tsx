@@ -3,6 +3,8 @@ import { X, Swords, ShieldCheck, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGameStore } from '../stores/useGameStore';
 import type { BossFight } from '../types';
+import { ResponseStatusBadge } from './ResponseStatusBadge';
+import { getResponseDraftText } from '../utils/savedResponses';
 
 interface Props {
     bossFight: BossFight;
@@ -17,8 +19,11 @@ export const BossFightPanel: React.FC<Props> = ({ bossFight, isOpen, onClose }) 
     const [showSuccess, setShowSuccess] = useState(false);
 
     const responseKey = `boss-fight:${bossFight.id}`;
-    const savedResponse = responseDrafts[responseKey] ?? '';
+    const savedResponse = getResponseDraftText(responseDrafts[responseKey]);
     const isCompleted = completedBossFights.includes(bossFight.id);
+    const responseStatus = savedResponse.trim()
+        ? (isCompleted ? 'completed' : 'draft')
+        : null;
 
     React.useEffect(() => {
         if (!isOpen) return;
@@ -104,6 +109,7 @@ export const BossFightPanel: React.FC<Props> = ({ bossFight, isOpen, onClose }) 
                                     <div className="flex items-center gap-3 mb-1">
                                         <h3 className="text-xl font-black text-white uppercase tracking-tight">Boss Fight</h3>
                                         <div className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-black">+{bossFight.xp} XP</div>
+                                        {responseStatus && <ResponseStatusBadge status={responseStatus} compact />}
                                     </div>
                                     <p className="text-sm text-white/40 font-bold uppercase tracking-widest">{bossFight.title}</p>
                                 </div>

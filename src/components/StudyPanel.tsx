@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useGemini } from '../hooks/useGemini';
+import { getResponseDraftText } from '../utils/savedResponses';
 
 interface Props {
     card: IConceptCard | null;
@@ -37,7 +38,9 @@ export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
     const hasApiKey = !!getApiKey();
     const manualContent = card ? contentStore[card.id]?.markdown : null;
     const recallDraftKey = card ? `card-recall:${card.id}` : '';
-    const savedRecallResponse = recallDraftKey ? responseDrafts[recallDraftKey] ?? '' : '';
+    const savedRecallResponse = recallDraftKey
+        ? getResponseDraftText(responseDrafts[recallDraftKey])
+        : '';
 
     useEffect(() => {
         if (!isOpen || !card) return;

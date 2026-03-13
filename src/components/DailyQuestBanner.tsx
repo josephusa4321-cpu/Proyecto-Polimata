@@ -3,9 +3,11 @@ import { useGameStore } from '../stores/useGameStore';
 import { Scroll, Sparkles, ChevronRight, CheckCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { DailyQuestPanel } from './DailyQuestPanel';
+import { ResponseStatusBadge } from './ResponseStatusBadge';
+import { getResponseDraftText } from '../utils/savedResponses';
 
 export const DailyQuestBanner: React.FC = () => {
-    const { dailyQuest, checkDailyQuest, completedCardIds } = useGameStore();
+    const { dailyQuest, checkDailyQuest, completedCardIds, responseDrafts } = useGameStore();
     const [isPanelOpen, setIsPanelOpen] = useState(false);
 
     useEffect(() => {
@@ -18,6 +20,13 @@ export const DailyQuestBanner: React.FC = () => {
     if (!dailyQuest || completedCardIds.length < 2) return null;
 
     const isCompleted = dailyQuest.completed;
+    const draftKey = `daily-quest:${dailyQuest.id}`;
+    const savedDraft = getResponseDraftText(responseDrafts[draftKey]);
+    const responseStatus = dailyQuest.userAnswer?.trim()
+        ? 'completed'
+        : savedDraft
+            ? 'draft'
+            : null;
 
     return (
         <div className="mb-12">
@@ -47,6 +56,7 @@ export const DailyQuestBanner: React.FC = () => {
                                 <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${isCompleted ? 'text-green-500' : 'text-primary'}`}>
                                     {isCompleted ? 'Misión Diaria Cumplida' : 'Misión del Día'}
                                 </span>
+                                {responseStatus && <ResponseStatusBadge status={responseStatus} compact />}
                                 {!isCompleted && (
                                     <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest">
                                         <Sparkles size={10} />

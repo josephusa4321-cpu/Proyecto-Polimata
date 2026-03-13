@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { GameState, ReviewItem, ConceptCard, ActivatedCombo, TeachingTaxEntry, DailyQuest, ShadowQuest, TimeAttack, MirrorMatch, Debuff, RunSummary } from '../types';
 import { LEVELS } from '../data/levels';
 import { supabase } from '../lib/supabase';
+import { mergeResponseDrafts, normalizeResponseDrafts } from '../utils/savedResponses';
 
 const SUPABASE_NO_ROWS_ERROR = 'PGRST116';
 const SYNC_STATUS_RESET_MS = 3000;
@@ -113,11 +114,21 @@ const buildCloudGameState = (state: GameState): CloudGameState => ({
     ngPlus: state.ngPlus,
 });
 
+const normalizeCloudState = (cloudState: Partial<CloudGameState>) => ({
+    ...cloudState,
+    responseDrafts: normalizeResponseDrafts(cloudState.responseDrafts, cloudState.lastSaved ?? Date.now())
+});
+
 const mergeCloudState = (localState: GameState, cloudState: Partial<CloudGameState>): Partial<GameState> => ({
     activePillar: cloudState.activePillar ?? localState.activePillar,
     activeModuleId: cloudState.activeModuleId ?? localState.activeModuleId,
     xp: cloudState.xp ?? localState.xp,
-    responseDrafts: cloudState.responseDrafts ?? localState.responseDrafts,
+    responseDrafts: mergeResponseDrafts(
+        localState.responseDrafts,
+        cloudState.responseDrafts,
+        localState.lastSaved ?? Date.now(),
+        cloudState.lastSaved ?? localState.lastSaved ?? Date.now()
+    ),
     completedMilestones: cloudState.completedMilestones ?? localState.completedMilestones,
     completedCardIds: cloudState.completedCardIds ?? localState.completedCardIds,
     completedBossFights: cloudState.completedBossFights ?? localState.completedBossFights,
@@ -530,13 +541,27 @@ export const useGameStore = create<GameState & GameActions>()(
 
             clearSyncStatus: () => set({ syncStatus: 'idle', syncMessage: null, syncErrorMessage: null }),
             setCloudSyncKey: (key: string) => set({ cloudSyncKey: key.trim() }),
-            setResponseDraft: (key: string, value: string) => set((state) => ({
-                responseDrafts: {
-                    ...state.responseDrafts,
-                    [key]: value
-                },
-                lastSaved: Date.now()
-            })),
+            setResponseDraft: (key: string, value: string) => set((state) => {
+                const nextValue = value.trim();
+                if (!nextValue) {
+                    const { [key]: _, ...rest } = state.responseDrafts;
+                    return {
+                        responseDrafts: rest,
+                        lastSaved: Date.now()
+                    };
+                }
+
+                return {
+                    responseDrafts: {
+                        ...state.responseDrafts,
+                        [key]: {
+                            value,
+                            updatedAt: Date.now()
+                        }
+                    },
+                    lastSaved: Date.now()
+                };
+            }),
             clearResponseDraft: (key: string) => set((state) => {
                 const { [key]: _, ...rest } = state.responseDrafts;
                 return {
@@ -612,7 +637,7 @@ export const useGameStore = create<GameState & GameActions>()(
                     if (error && error.code !== SUPABASE_NO_ROWS_ERROR) throw error;
 
                     if (data && data.game_state) {
-                        const cloudState = data.game_state as Partial<CloudGameState>;
+                        const cloudState = normalizeCloudState(data.game_state as Partial<CloudGameState>);
                         const cloudLastSaved = cloudState.lastSaved ?? 0;
                         const localLastSaved = state.lastSaved ?? 0;
 
@@ -1280,6 +1305,19 @@ export const useGameStore = create<GameState & GameActions>()(
         }),
         {
             name: 'polymath-game-state',
+            merge: (persistedState, currentState) => {
+                const persisted = persistedState as Partial<GameState & GameActions>;
+                return {
+                    ...currentState,
+                    ...persisted,
+                    responseDrafts: mergeResponseDrafts(
+                        currentState.responseDrafts,
+                        persisted.responseDrafts,
+                        currentState.lastSaved ?? Date.now(),
+                        persisted.lastSaved ?? currentState.lastSaved ?? Date.now()
+                    )
+                };
+            }
         }
     )
 );

@@ -3,6 +3,8 @@ import { Swords, Lock, CheckCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useGameStore } from '../stores/useGameStore';
 import type { BossFight } from '../types';
+import { ResponseStatusBadge } from './ResponseStatusBadge';
+import { getResponseDraftText } from '../utils/savedResponses';
 
 interface Props {
     bossFight: BossFight;
@@ -10,11 +12,15 @@ interface Props {
 }
 
 export const BossFightNode: React.FC<Props> = ({ bossFight, onOpen }) => {
-    const { completedCardIds, completedBossFights } = useGameStore();
+    const { completedCardIds, completedBossFights, responseDrafts } = useGameStore();
 
     const isCompleted = completedBossFights.includes(bossFight.id);
     const allPrereqsMet = bossFight.prerequisites.every(id => completedCardIds.includes(id));
     const status = isCompleted ? 'completed' : allPrereqsMet ? 'available' : 'locked';
+    const savedResponse = getResponseDraftText(responseDrafts[`boss-fight:${bossFight.id}`]);
+    const responseStatus = savedResponse.trim()
+        ? (isCompleted ? 'completed' : 'draft')
+        : null;
 
     if (status === 'locked') {
         return (
@@ -63,6 +69,7 @@ export const BossFightNode: React.FC<Props> = ({ bossFight, onOpen }) => {
                         <div className="flex items-center justify-center gap-3">
                             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Módulo 1.1 Completo</span>
                             <div className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-black">+{bossFight.xp} XP</div>
+                            {responseStatus && <ResponseStatusBadge status={responseStatus} compact />}
                         </div>
                         <h3 className="text-2xl font-black text-white uppercase tracking-tighter">{bossFight.title}</h3>
                         <p className="text-xs text-white/40 font-medium max-w-[300px] mx-auto leading-relaxed">

@@ -11,6 +11,7 @@ import { ModuleSelector } from './ModuleSelector';
 import { MilestoneList } from './MilestoneList';
 import { ALL_MODULES, ALL_CARDS, ALL_BOSS_FIGHTS } from '../data/all-modules';
 import type { ConceptCard as IConceptCard } from '../types';
+import { SavedResponsesLog } from './SavedResponsesLog';
 
 export const SkillTree: React.FC = () => {
     const { completedCardIds, activePillar, activeModuleId, setActivePillar, setActiveModuleId } = useGameStore();
@@ -79,6 +80,8 @@ export const SkillTree: React.FC = () => {
                     </p>
                 )}
             </div>
+
+            <SavedResponsesLog />
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 relative">
                 {moduleCards.length === 0 ? (

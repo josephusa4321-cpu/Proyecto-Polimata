@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useGameStore } from '../stores/useGameStore';
 import { Scroll, Sparkles, X, Send, BrainCircuit, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { ResponseStatusBadge } from './ResponseStatusBadge';
+import { getResponseDraftText } from '../utils/savedResponses';
 
 interface Props {
     isOpen: boolean;
@@ -14,12 +16,18 @@ export const DailyQuestPanel: React.FC<Props> = ({ isOpen, onClose }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const draftKey = dailyQuest ? `daily-quest:${dailyQuest.id}` : '';
+    const savedDraft = draftKey ? getResponseDraftText(responseDrafts[draftKey]) : '';
+    const responseStatus = dailyQuest?.completed && dailyQuest.userAnswer?.trim()
+        ? 'completed'
+        : savedDraft
+            ? 'draft'
+            : null;
 
     React.useEffect(() => {
         if (!isOpen || !dailyQuest) return;
-        setAnswer(dailyQuest.userAnswer ?? responseDrafts[draftKey] ?? '');
+        setAnswer(dailyQuest.userAnswer ?? savedDraft);
         setIsSubmitting(false);
-    }, [isOpen, dailyQuest, draftKey, responseDrafts]);
+    }, [isOpen, dailyQuest, savedDraft]);
 
     if (!dailyQuest) return null;
 
@@ -69,6 +77,7 @@ export const DailyQuestPanel: React.FC<Props> = ({ isOpen, onClose }) => {
                                     <div className="flex items-center gap-2">
                                         <BrainCircuit size={14} className="text-primary/60" />
                                         <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Sincronizando Conceptos</span>
+                                        {responseStatus && <ResponseStatusBadge status={responseStatus} compact />}
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         {dailyQuest.cardIds.map((id, i) => (

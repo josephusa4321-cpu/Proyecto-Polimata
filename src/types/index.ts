@@ -85,6 +85,21 @@ export interface CachedContent {
     generatedDate: number;
 }
 
+export interface SavedResponseDraft {
+    value: string;
+    updatedAt: number;
+}
+
+export interface SavedResponseEntry {
+    id: string;
+    kind: 'card' | 'bossFight' | 'dailyQuest';
+    status: 'draft' | 'completed';
+    title: string;
+    relatedId: string;
+    content: string;
+    updatedAt: number;
+}
+
 export interface ActivatedCombo {
     cardId: string;
     targetId: string;
@@ -192,7 +207,7 @@ export interface CapstoneState {
 export interface GameState {
     deviceId: string;
     cloudSyncKey: string;
-    responseDrafts: Record<string, string>;
+    responseDrafts: Record<string, SavedResponseDraft>;
     syncStatus: 'idle' | 'syncing' | 'error' | 'success';
     syncMessage: string | null;
     syncErrorMessage: string | null;

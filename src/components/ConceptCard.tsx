@@ -3,6 +3,8 @@ import type { ConceptCard as IConceptCard, ReviewItem } from '../types';
 import { useGameStore } from '../stores/useGameStore';
 import { Lock, CheckCircle, ArrowRight, Zap, Brain, ClipboardPaste } from 'lucide-react';
 import { motion } from 'motion/react';
+import { ResponseStatusBadge } from './ResponseStatusBadge';
+import { getResponseDraftText } from '../utils/savedResponses';
 
 interface Props {
     card: IConceptCard;
@@ -11,11 +13,15 @@ interface Props {
 }
 
 export const ConceptCard: React.FC<Props> = ({ card, status, onClick }) => {
-    const { completedCardIds, reviews, contentStore, openContentEditor } = useGameStore();
+    const { completedCardIds, reviews, contentStore, openContentEditor, responseDrafts } = useGameStore();
 
     const isLocked = status === 'locked';
     const isCompleted = completedCardIds.includes(card.id);
     const hasManualContent = !!contentStore[card.id];
+    const recallResponse = getResponseDraftText(responseDrafts[`card-recall:${card.id}`]);
+    const responseStatus = recallResponse.trim()
+        ? (isCompleted ? 'completed' : 'draft')
+        : null;
 
     // Check if needs review (SRS)
     const review = reviews.find((r: ReviewItem) => r.cardId === card.id);
@@ -95,6 +101,7 @@ export const ConceptCard: React.FC<Props> = ({ card, status, onClick }) => {
                         {pre}
                     </span>
                 ))}
+                {responseStatus && <ResponseStatusBadge status={responseStatus} compact />}
             </div>
 
             {/* Progress indicators/Icons */}
