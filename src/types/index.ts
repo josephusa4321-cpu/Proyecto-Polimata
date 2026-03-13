@@ -70,6 +70,7 @@ export type ReviewItem = {
     nextReview: number; // Timestamp
     interval: number; // Days (1, 3, 7, 21, 60)
     level: number; // 0-5 (SRS stage)
+    updatedAt: number;
 }
 
 export interface CardContent {
@@ -141,6 +142,7 @@ export interface DailyQuest {
     completed: boolean;
     completedAt: number | null;
     xpReward: number;
+    updatedAt: number;
 }
 
 export interface TimeAttack {
@@ -154,6 +156,7 @@ export interface TimeAttack {
     completed: boolean;
     completedAt: number | null;
     xpReward: number;               // 20 XP base, +10 bonus si < 30 seg
+    updatedAt: number;
 }
 
 export interface ShadowQuest {
@@ -165,6 +168,7 @@ export interface ShadowQuest {
     completed: boolean;
     completedAt: number | null;
     xpReward: number;                // 30 XP
+    updatedAt: number;
 }
 
 export interface MirrorMatch {
@@ -176,6 +180,7 @@ export interface MirrorMatch {
     completed: boolean;
     completedAt: number | null;
     xpReward: number;                // 40 XP
+    updatedAt: number;
 }
 
 export interface Debuff {
@@ -202,6 +207,7 @@ export interface CapstoneState {
     completedAt: number | null;
     submission: string | null;
     xpReward: number;               // 500 XP
+    updatedAt: number;
 }
 
 export interface UserProgressState {
@@ -310,4 +316,5 @@ export interface NewGamePlusState {
     isAvailable: boolean;
     ngPlusCount: number;
     previousRuns: RunSummary[];
+    updatedAt: number;
 }

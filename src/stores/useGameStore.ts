@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { GameState, ReviewItem, ConceptCard, ActivatedCombo, TeachingTaxEntry, DailyQuest, ShadowQuest, TimeAttack, MirrorMatch, Debuff, RunSummary, PersistedUserState, UserProgressState } from '../types';
 import { LEVELS } from '../data/levels';
 import { supabase } from '../lib/supabase';
-import { getDefaultStoreState, buildProgressFromState, getProgressMirror, hasMeaningfulProgress, mergeProgressState, migrateLegacyProgressState } from './progressState';
+import { createInitialProgressState, getDefaultStoreState, buildProgressFromState, getProgressMirror, mergeProgressState, migrateLegacyProgressState } from './progressState';
 
 const SUPABASE_NO_ROWS_ERROR = 'PGRST116';
 const SYNC_STATUS_RESET_MS = 3000;
@@ -14,6 +14,7 @@ type SyncOptions = {
 };
 
 type CloudGameState = {
+    schemaVersion: 2;
     progress: UserProgressState;
 };
 
@@ -51,10 +52,13 @@ const formatSyncError = (error: unknown) => {
 };
 
 const buildCloudGameState = (state: GameState): CloudGameState => ({
+    schemaVersion: 2,
     progress: buildProgressFromState(state),
 });
 
-const normalizeCloudState = (cloudState: Partial<CloudGameState> | Partial<GameState>) => {
+const normalizeCloudState = (
+    cloudState: Partial<CloudGameState> | Partial<GameState> | Partial<UserProgressState>
+) => {
     const progressSource = 'progress' in cloudState && cloudState.progress ? cloudState.progress : cloudState;
     const fallbackLastSaved = (
         ('lastSaved' in progressSource ? progressSource.lastSaved : undefined)
@@ -63,6 +67,7 @@ const normalizeCloudState = (cloudState: Partial<CloudGameState> | Partial<GameS
     );
 
     return {
+        schemaVersion: 2,
         progress: migrateLegacyProgressState(progressSource, fallbackLastSaved)
     };
 };
@@ -321,14 +326,16 @@ export const useGameStore = create<GameState & GameActions>()(
                         ...existingReview,
                         level: nextLevel,
                         interval: intervals[nextLevel],
-                        nextReview: Date.now() + intervals[nextLevel] * 24 * 60 * 60 * 1000
+                        nextReview: Date.now() + intervals[nextLevel] * 24 * 60 * 60 * 1000,
+                        updatedAt: Date.now()
                     };
                 } else {
                     nextReviewItem = {
                         cardId,
                         level: 0,
                         interval: intervals[0],
-                        nextReview: Date.now() + intervals[0] * 24 * 60 * 60 * 1000
+                        nextReview: Date.now() + intervals[0] * 24 * 60 * 60 * 1000,
+                        updatedAt: Date.now()
                     };
                 }
 
@@ -516,35 +523,16 @@ export const useGameStore = create<GameState & GameActions>()(
 
                     if (data && data.game_state) {
                         const cloudState = normalizeCloudState(data.game_state as Partial<CloudGameState> | Partial<GameState>);
-                        const cloudLastSaved = cloudState.progress.lastSaved ?? 0;
-                        const localLastSaved = state.progress.lastSaved ?? state.lastSaved ?? 0;
-                        const cloudHasProgress = hasMeaningfulProgress(cloudState.progress);
-                        const localHasProgress = hasMeaningfulProgress(state.progress);
 
-                        if ((cloudHasProgress && !localHasProgress) || cloudLastSaved > localLastSaved) {
-                            set((localState) => {
-                                const mergedProgress = mergeProgressState(localState.progress, cloudState.progress);
-                                return {
-                                    progress: mergedProgress,
-                                    syncStatus: trigger === 'manual' ? 'success' : 'idle',
-                                    syncMessage: trigger === 'manual'
-                                    ? `Se cargó la copia de nube más reciente para ${syncKey}.`
-                                    : null,
-                                syncErrorMessage: null,
-                                lastSynced: Date.now()
-                                };
-                            });
-                        } else {
-                            set((localState) => ({
-                                progress: mergeProgressState(localState.progress, cloudState.progress),
-                                syncStatus: trigger === 'manual' ? 'success' : 'idle',
-                                syncMessage: trigger === 'manual'
-                                    ? 'La copia local ya era más reciente; no se sobrescribió.'
-                                    : null,
-                                syncErrorMessage: null,
-                                lastSynced: Date.now()
-                            }));
-                        }
+                        set((localState) => ({
+                            progress: mergeProgressState(localState.progress, cloudState.progress),
+                            syncStatus: trigger === 'manual' ? 'success' : 'idle',
+                            syncMessage: trigger === 'manual'
+                                ? `Se fusiono el progreso local con la nube para ${syncKey}.`
+                                : null,
+                            syncErrorMessage: null,
+                            lastSynced: Date.now()
+                        }));
                     } else {
                         set({
                             syncStatus: trigger === 'manual' ? 'success' : 'idle',
@@ -820,10 +808,11 @@ export const useGameStore = create<GameState & GameActions>()(
                     userAnswer: null,
                     completed: false,
                     completedAt: null,
-                    xpReward: 25
+                    xpReward: 25,
+                    updatedAt: Date.now()
                 };
 
-                set({ dailyQuest: newQuest });
+                set({ dailyQuest: newQuest, lastSaved: Date.now() });
             },
 
             completeDailyQuest: (answer: string) => {
@@ -834,7 +823,8 @@ export const useGameStore = create<GameState & GameActions>()(
                     ...dailyQuest,
                     userAnswer: answer,
                     completed: true,
-                    completedAt: Date.now()
+                    completedAt: Date.now(),
+                    updatedAt: Date.now()
                 };
 
                 set((state) => ({
@@ -878,10 +868,11 @@ export const useGameStore = create<GameState & GameActions>()(
                     userObservation: null,
                     completed: false,
                     completedAt: null,
-                    xpReward: 30
+                    xpReward: 30,
+                    updatedAt: Date.now()
                 };
 
-                set({ activeShadowQuest: newQuest, shadowQuestModalOpen: true });
+                set({ activeShadowQuest: newQuest, shadowQuestModalOpen: true, lastSaved: Date.now() });
             },
 
             completeShadowQuest: (observation: string) => {
@@ -892,7 +883,8 @@ export const useGameStore = create<GameState & GameActions>()(
                     ...activeShadowQuest,
                     userObservation: observation,
                     completed: true,
-                    completedAt: Date.now()
+                    completedAt: Date.now(),
+                    updatedAt: Date.now()
                 };
 
                 set((state) => ({
@@ -945,10 +937,11 @@ export const useGameStore = create<GameState & GameActions>()(
                     timeUsed: null,
                     completed: false,
                     completedAt: null,
-                    xpReward: 20 // Base
+                    xpReward: 20, // Base
+                    updatedAt: Date.now()
                 };
 
-                set({ activeTimeAttack: newAttack, timeAttackModalOpen: true });
+                set({ activeTimeAttack: newAttack, timeAttackModalOpen: true, lastSaved: Date.now() });
             },
 
             completeTimeAttack: (answer: string, secondsUsed: number) => {
@@ -965,7 +958,8 @@ export const useGameStore = create<GameState & GameActions>()(
                     timeUsed: secondsUsed,
                     completed: true,
                     completedAt: Date.now(),
-                    xpReward: totalXP
+                    xpReward: totalXP,
+                    updatedAt: Date.now()
                 };
 
                 set((state) => ({
@@ -1005,9 +999,10 @@ export const useGameStore = create<GameState & GameActions>()(
                     completed: false,
                     completedAt: null,
                     xpReward: get().ngPlus.ngPlusCount > 0 ? 60 : 40, // Increased reward for NG+
+                    updatedAt: Date.now()
                 };
 
-                set({ activeMirrorMatch: newMatch, mirrorMatchModalOpen: true });
+                set({ activeMirrorMatch: newMatch, mirrorMatchModalOpen: true, lastSaved: Date.now() });
             },
 
             completeMirrorMatch: (argument: string) => {
@@ -1019,6 +1014,7 @@ export const useGameStore = create<GameState & GameActions>()(
                     userArgument: argument,
                     completed: true,
                     completedAt: Date.now(),
+                    updatedAt: Date.now(),
                 };
 
                 set((state) => ({
@@ -1076,14 +1072,16 @@ export const useGameStore = create<GameState & GameActions>()(
                     ...capstone,
                     isCompleted: true,
                     completedAt: Date.now(),
-                    submission
+                    submission,
+                    updatedAt: Date.now()
                 };
 
                 set((state) => ({
                     capstone: updatedCapstone,
                     ngPlus: {
                         ...state.ngPlus,
-                        isAvailable: true
+                        isAvailable: true,
+                        updatedAt: Date.now()
                     },
                     xp: state.xp + capstone.xpReward,
                     lastXPGain: { amount: capstone.xpReward, timestamp: Date.now() },
@@ -1127,14 +1125,16 @@ export const useGameStore = create<GameState & GameActions>()(
                     ngPlus: {
                         isAvailable: false,
                         ngPlusCount: state.ngPlus.ngPlusCount + 1,
-                        previousRuns: [...state.ngPlus.previousRuns, runSummary]
+                        previousRuns: [...state.ngPlus.previousRuns, runSummary],
+                        updatedAt: Date.now()
                     },
                     capstone: {
                         isUnlocked: false,
                         isCompleted: false,
                         completedAt: null,
                         submission: null,
-                        xpReward: 500
+                        xpReward: 500,
+                        updatedAt: Date.now()
                     },
                     lastSaved: Date.now()
                 }));
@@ -1144,48 +1144,26 @@ export const useGameStore = create<GameState & GameActions>()(
 
             setSyncId: (id: string) => set({ deviceId: id }),
 
-            resetProgress: () => set(() => ({
-                xp: 0,
-                completedCardIds: [],
-                completedBossFights: [],
-                completedMilestones: [],
-                activatedCombos: [],
-                reviews: [],
-                unlockedAchievements: [],
-                latestUnlockedAchievement: null,
-                streakDays: 0,
-                maxStreakDays: 0,
-                statsVisitCount: 0,
-                studyLog: [],
-                taxesPaid: [],
-                nextTaxAt: 10,
-                currentTaxCard: null,
-                isTaxDue: false,
-                dailyQuest: null,
-                questHistory: [],
-                activeShadowQuest: null,
-                shadowQuestHistory: [],
-                activeTimeAttack: null,
-                timeAttackHistory: [],
-                activeMirrorMatch: null,
-                mirrorMatchHistory: [],
-                debuffHistory: [],
-                capstone: {
-                    isUnlocked: false,
-                    isCompleted: false,
-                    completedAt: null,
-                    submission: null,
-                    xpReward: 500
-                },
-                ngPlus: {
-                    isAvailable: false,
-                    ngPlusCount: 0,
-                    previousRuns: []
-                },
-                responseDrafts: {},
-                lastSaved: Date.now(),
-                // Conservamos api key, contentStore y cache
-            }))
+            resetProgress: () => {
+                const freshProgress = {
+                    ...createInitialProgressState(),
+                    lastSaved: Date.now()
+                };
+
+                set(() => ({
+                    progress: freshProgress,
+                    latestUnlockedAchievement: null,
+                    statsVisitCount: 0,
+                    pendingCelebration: null,
+                    lastXPGain: null,
+                    taxModalOpen: false,
+                    shadowQuestModalOpen: false,
+                    mirrorMatchModalOpen: false,
+                    timeAttackModalOpen: false,
+                    debuffPanelOpen: false,
+                    capstonePanelOpen: false
+                }));
+            }
             });
         },
         {
