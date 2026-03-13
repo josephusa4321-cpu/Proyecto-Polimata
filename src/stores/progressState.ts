@@ -91,8 +91,7 @@ export const hasMeaningfulProgress = (progress: Partial<UserProgressState> | Par
         || normalized.activeMirrorMatch !== null
         || normalized.activeTimeAttack !== null
         || normalized.capstone.isCompleted
-        || normalized.ngPlus.ngPlusCount > 0
-        || normalized.lastSaved > 0;
+        || normalized.ngPlus.ngPlusCount > 0;
 };
 
 export const getProgressMirror = (progress: UserProgressState) => ({
