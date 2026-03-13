@@ -16,6 +16,7 @@ type CloudGameState = {
     activePillar: GameState['activePillar'];
     activeModuleId: GameState['activeModuleId'];
     xp: GameState['xp'];
+    responseDrafts: GameState['responseDrafts'];
     completedMilestones: GameState['completedMilestones'];
     completedCardIds: GameState['completedCardIds'];
     completedBossFights: GameState['completedBossFights'];
@@ -82,6 +83,7 @@ const buildCloudGameState = (state: GameState): CloudGameState => ({
     activePillar: state.activePillar,
     activeModuleId: state.activeModuleId,
     xp: state.xp,
+    responseDrafts: state.responseDrafts,
     completedMilestones: state.completedMilestones,
     completedCardIds: state.completedCardIds,
     completedBossFights: state.completedBossFights,
@@ -115,6 +117,7 @@ const mergeCloudState = (localState: GameState, cloudState: Partial<CloudGameSta
     activePillar: cloudState.activePillar ?? localState.activePillar,
     activeModuleId: cloudState.activeModuleId ?? localState.activeModuleId,
     xp: cloudState.xp ?? localState.xp,
+    responseDrafts: cloudState.responseDrafts ?? localState.responseDrafts,
     completedMilestones: cloudState.completedMilestones ?? localState.completedMilestones,
     completedCardIds: cloudState.completedCardIds ?? localState.completedCardIds,
     completedBossFights: cloudState.completedBossFights ?? localState.completedBossFights,
@@ -176,6 +179,8 @@ interface GameActions {
     loadFromCloud: (options?: SyncOptions) => Promise<void>;
     clearSyncStatus: () => void;
     setCloudSyncKey: (key: string) => void;
+    setResponseDraft: (key: string, value: string) => void;
+    clearResponseDraft: (key: string) => void;
     checkMilestones: () => void;
     checkAchievements: () => void;
     recordActivity: () => void;
@@ -227,6 +232,7 @@ export const useGameStore = create<GameState & GameActions>()(
         (set, get) => ({
             deviceId: crypto.randomUUID ? crypto.randomUUID() : 'local-' + Date.now(),
             cloudSyncKey: '',
+            responseDrafts: {},
             syncStatus: 'idle',
             syncMessage: null,
             syncErrorMessage: null,
@@ -524,6 +530,20 @@ export const useGameStore = create<GameState & GameActions>()(
 
             clearSyncStatus: () => set({ syncStatus: 'idle', syncMessage: null, syncErrorMessage: null }),
             setCloudSyncKey: (key: string) => set({ cloudSyncKey: key.trim() }),
+            setResponseDraft: (key: string, value: string) => set((state) => ({
+                responseDrafts: {
+                    ...state.responseDrafts,
+                    [key]: value
+                },
+                lastSaved: Date.now()
+            })),
+            clearResponseDraft: (key: string) => set((state) => {
+                const { [key]: _, ...rest } = state.responseDrafts;
+                return {
+                    responseDrafts: rest,
+                    lastSaved: Date.now()
+                };
+            }),
 
             syncToCloud: async ({ trigger = 'manual' } = {}) => {
                 if (trigger === 'manual') {
@@ -1253,6 +1273,7 @@ export const useGameStore = create<GameState & GameActions>()(
                     ngPlusCount: 0,
                     previousRuns: []
                 },
+                responseDrafts: {},
                 lastSaved: Date.now(),
                 // Conservamos api key, contentStore y cache
             })),

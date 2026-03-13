@@ -192,6 +192,7 @@ export interface CapstoneState {
 export interface GameState {
     deviceId: string;
     cloudSyncKey: string;
+    responseDrafts: Record<string, string>;
     syncStatus: 'idle' | 'syncing' | 'error' | 'success';
     syncMessage: string | null;
     syncErrorMessage: string | null;
