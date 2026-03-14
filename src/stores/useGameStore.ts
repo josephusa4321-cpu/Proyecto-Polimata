@@ -317,25 +317,29 @@ export const useGameStore = create<GameState & GameActions>()(
                 const { reviews } = get();
                 const intervals = [1, 3, 7, 21, 60];
                 const existingReview = reviews.find(r => r.cardId === cardId);
+                const now = Date.now();
+                const retryDelayMs = 10 * 60 * 1000;
 
                 let nextReviewItem: ReviewItem;
 
-                if (existingReview) {
+                if (existingReview && success) {
                     const nextLevel = success ? Math.min(intervals.length - 1, existingReview.level + 1) : 0;
                     nextReviewItem = {
                         ...existingReview,
                         level: nextLevel,
                         interval: intervals[nextLevel],
-                        nextReview: Date.now() + intervals[nextLevel] * 24 * 60 * 60 * 1000,
-                        updatedAt: Date.now()
+                        nextReview: now + intervals[nextLevel] * 24 * 60 * 60 * 1000,
+                        updatedAt: now
                     };
                 } else {
                     nextReviewItem = {
                         cardId,
                         level: 0,
-                        interval: intervals[0],
-                        nextReview: Date.now() + intervals[0] * 24 * 60 * 60 * 1000,
-                        updatedAt: Date.now()
+                        interval: success ? intervals[0] : 0,
+                        nextReview: success
+                            ? now + intervals[0] * 24 * 60 * 60 * 1000
+                            : now + retryDelayMs,
+                        updatedAt: now
                     };
                 }
 
