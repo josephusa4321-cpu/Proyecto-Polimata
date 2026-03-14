@@ -19,7 +19,7 @@ export const TimeAttackModal: React.FC = () => {
     // Reset when modal opens
     useEffect(() => {
         if (timeAttackModalOpen && activeTimeAttack) {
-            setSecondsLeft(60);
+            setSecondsLeft(activeTimeAttack.timeLimit);
             setAnswer('');
             setIsFinishing(false);
 
@@ -42,10 +42,10 @@ export const TimeAttackModal: React.FC = () => {
     }, [timeAttackModalOpen, activeTimeAttack]);
 
     const handleSubmit = () => {
-        if (!answer.trim() || secondsLeft === 0) return;
+        if (!activeTimeAttack || !answer.trim() || secondsLeft === 0) return;
         
         setIsFinishing(true);
-        const timeUsed = 60 - secondsLeft;
+        const timeUsed = activeTimeAttack.timeLimit - secondsLeft;
         
         // Delay a bit to show success state before closing
         setTimeout(() => {
@@ -55,7 +55,7 @@ export const TimeAttackModal: React.FC = () => {
 
     if (!activeTimeAttack) return null;
 
-    const progress = (secondsLeft / 60) * 100;
+    const progress = activeTimeAttack ? (secondsLeft / activeTimeAttack.timeLimit) * 100 : 0;
     const colorClass = secondsLeft > 30 ? 'text-green-400' : secondsLeft > 15 ? 'text-yellow-400' : 'text-red-500';
     const strokeColor = secondsLeft > 30 ? '#4ade80' : secondsLeft > 15 ? '#facc15' : '#ef4444';
 
