@@ -1,5 +1,5 @@
 import { ALL_BOSS_FIGHTS, ALL_CARDS } from '../data/all-modules';
-import type { DailyQuest, GameState, SavedResponseDraft, SavedResponseEntry } from '../types';
+import type { DailyQuest, GameState, SavedResponseDraft, SavedResponseEntry, TimeAttack, ShadowQuest, MirrorMatch } from '../types';
 
 type DraftInput = Record<string, string | SavedResponseDraft> | null | undefined;
 
@@ -88,13 +88,27 @@ const buildDailyQuestLookup = (dailyQuest: DailyQuest | null, questHistory: Dail
     return lookup;
 };
 
+interface BuildSavedResponseEntriesArgs {
+    responseDrafts: Record<string, SavedResponseDraft>;
+    completedCardIds: string[];
+    completedBossFights: string[];
+    dailyQuest: DailyQuest | null;
+    questHistory: DailyQuest[];
+    timeAttackHistory?: TimeAttack[];
+    shadowQuestHistory?: ShadowQuest[];
+    mirrorMatchHistory?: MirrorMatch[];
+}
+
 export const buildSavedResponseEntries = ({
     responseDrafts,
     completedCardIds,
     completedBossFights,
     dailyQuest,
-    questHistory
-}: Pick<GameState, 'responseDrafts' | 'completedCardIds' | 'completedBossFights' | 'dailyQuest' | 'questHistory'>): SavedResponseEntry[] => {
+    questHistory,
+    timeAttackHistory = [],
+    shadowQuestHistory = [],
+    mirrorMatchHistory = []
+}: BuildSavedResponseEntriesArgs): SavedResponseEntry[] => {
     const entries = new Map<string, SavedResponseEntry>();
     const dailyQuestLookup = buildDailyQuestLookup(dailyQuest, questHistory);
 
@@ -166,6 +180,54 @@ export const buildSavedResponseEntries = ({
             relatedId: quest.id,
             content,
             updatedAt: quest.completedAt ?? Date.now()
+        });
+    });
+
+    // Mapeo de Time Attack (Relámpago)
+    timeAttackHistory.forEach((item) => {
+        const content = item.userAnswer?.trim();
+        if (!content) return;
+
+        entries.set(`time-attack:${item.id}`, {
+            id: `time-attack:${item.id}`,
+            kind: 'timeAttack',
+            status: item.completed ? 'completed' : 'draft',
+            title: `Relámpago · ${item.cardTitle}`,
+            relatedId: item.id,
+            content,
+            updatedAt: item.completedAt ?? item.updatedAt
+        });
+    });
+
+    // Mapeo de Shadow Quest (Observación)
+    shadowQuestHistory.forEach((item) => {
+        const content = item.userObservation?.trim();
+        if (!content) return;
+
+        entries.set(`shadow-quest:${item.id}`, {
+            id: `shadow-quest:${item.id}`,
+            kind: 'shadowQuest',
+            status: item.completed ? 'completed' : 'draft',
+            title: `Observación · ${item.cardTitle}`,
+            relatedId: item.id,
+            content,
+            updatedAt: item.completedAt ?? item.updatedAt
+        });
+    });
+
+    // Mapeo de Mirror Match (Contradicción)
+    mirrorMatchHistory.forEach((item) => {
+        const content = item.userArgument?.trim();
+        if (!content) return;
+
+        entries.set(`mirror-match:${item.id}`, {
+            id: `mirror-match:${item.id}`,
+            kind: 'mirrorMatch',
+            status: item.completed ? 'completed' : 'draft',
+            title: `Mirror Match · ${item.cardTitle}`,
+            relatedId: item.id,
+            content,
+            updatedAt: item.completedAt ?? item.updatedAt
         });
     });
 

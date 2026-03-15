@@ -1,26 +1,40 @@
-## Goal
-Implementar un efecto de estallido de partículas (XP Burst) que lance chispas doradas/amarillas cuando se gana XP, dirigidas visualmente hacia el marcador de nivel del HUD para elevar la satisfacción del usuario.
+# [Fase 2] Interactive Boss Fight (Combate por Turnos)
 
-## Assumptions
-- Ya existe `src/components/XPGainIndicator.tsx` que escucha el estado `lastXPGain`.
-- El HUD de nivel se encuentra en la esquina superior izquierda por defecto.
-- Se puede usar `framer-motion` para animar coordenadas de pantalla relativas (`x`, `y`) desde el centro del indicador hacia el extremo del HUD.
+Transformar el actual `BossFightPanel` (que es solo un cuadro de texto) en un módulo de juego interactivo donde el usuario "debate" contra el boss usando sus conocimientos (Concept Cards).
 
-## Plan
+## User Review Required
 
-### 1. Enriquecer `XPGainIndicator.tsx` con Partículas
-- **Archivo**: `src/components/XPGainIndicator.tsx`
-- **Cambios**:
-  - Alrededor del `<motion.div>` del texto `+XP`, mapear un array de 8-10 elementos ("chispas").
-  - Cada chispa será un punto `<motion.div>` de color `bg-yellow-400` con `blur-sm` o brillo.
-  - Diseñar la animación en dos fases:
-    1. **Explosión Radial**: Se expanden hacia afuera en ángulos aleatorios.
-    2. **Viaje al HUD**: Se desplazan hacia arriba y a la izquierda acelerando, mientras se encogen a escala 0.
-- **Verificación**: Completar una quest o card en la app para detonar la ganancia de XP y certificar que se vean volar las chispas doradas hacia el HUD.
+> [!IMPORTANT]
+> Esto nos adentra en la **Fase 2** del proyecto. Requiere expandir el estado con `hp` (Puntos de Vida) o usar dinámicas de Framer Motion para simular turnos de juego.
 
-## Risks & mitigations
-- **Riesgo**: Cálculo tosco de la trayectoria debido a que los marcadores pueden moverse en Responsive/Móvil.
-  - **Mitigación**: Usar coordenadas relativas genéricas hacia el "Top-Left" de la pantalla o un simple "Burst" radial estético que se eleve, el cual suele ser responsive amigable y muy elegante.
+## Proposed Changes
 
-## Rollback plan
-Revertir el archivo `XPGainIndicator.tsx` a su versión original de cápsula flotante de texto.
+### 🎨 Componentes de Combate
+
+#### [MODIFY] [BossFightPanel.tsx](file:///c:/Users/USUARIO/Desktop/Proyecto%20Polimata/src/components/BossFightPanel.tsx)
+- Rediseñar el modal para mostrar:
+  - **Barra de vida del usuario (HP)**: Basada en su racha o nivel.
+  - **Barra de vida del Boss (HP)**: El "Sesgo" o monstruo conceptual.
+  - **Mano de cartas**: Cartas del módulo actual cargadas para "atacar".
+- Añadir lógica de turnos:
+  1. El Boss lanza un **Argumento erróneo** (ej: "Los sistemas son estáticos").
+  2. El usuario selecciona la **Concept Card correcta** para contrarrestarlo.
+  3. Si la carta es correcta, la barra del Boss baja. Si no, baja la del usuario.
+
+#### [NEW] [BossFightHUD.tsx](file:///c:/Users/USUARIO/Desktop/Proyecto%20Polimata/src/components/BossFightHUD.tsx)
+- Un sub-componente para renderizar la vida y los avatares enfrentados.
+
+---
+
+## Verification Plan
+
+### Manual Verification
+1. Entrar a un módulo completo.
+2. Iniciar el combate.
+3. Verificar que bajen los puntos de vida al dar clic en las opciones de contra-argumento.
+4. Mostrar pantalla de victoria/derrota animada.
+
+---
+
+## Approval
+- [ ] Aprobado por el usuario para iniciar construcción.

@@ -9,7 +9,10 @@ import type { SavedResponseEntry } from '../types';
 const KIND_LABELS: Record<SavedResponseEntry['kind'], string> = {
     card: 'Active Recall',
     bossFight: 'Boss Fight',
-    dailyQuest: 'Mision diaria'
+    dailyQuest: 'Misión diaria',
+    timeAttack: 'Relámpago',
+    shadowQuest: 'Observación',
+    mirrorMatch: 'Mirror Match'
 };
 
 const formatResponseTimestamp = (timestamp: number) =>
@@ -20,12 +23,20 @@ const formatResponseTimestamp = (timestamp: number) =>
 
 export const SavedResponsesLog: React.FC = () => {
     const {
-        responseDrafts,
+        progress,
+        responseDrafts
+    } = useGameStore();
+
+    const {
         completedCardIds,
         completedBossFights,
         dailyQuest,
-        questHistory
-    } = useGameStore();
+        questHistory,
+        timeAttackHistory = [],
+        shadowQuestHistory = [],
+        mirrorMatchHistory = []
+    } = progress;
+
     const [isExpanded, setIsExpanded] = React.useState(true);
     const [selectedEntry, setSelectedEntry] = React.useState<SavedResponseEntry | null>(null);
 
@@ -35,9 +46,12 @@ export const SavedResponsesLog: React.FC = () => {
             completedCardIds,
             completedBossFights,
             dailyQuest,
-            questHistory
+            questHistory,
+            timeAttackHistory,
+            shadowQuestHistory,
+            mirrorMatchHistory
         }),
-        [responseDrafts, completedCardIds, completedBossFights, dailyQuest, questHistory]
+        [responseDrafts, completedCardIds, completedBossFights, dailyQuest, questHistory, timeAttackHistory, shadowQuestHistory, mirrorMatchHistory]
     );
 
     return (

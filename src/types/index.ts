@@ -93,7 +93,7 @@ export interface SavedResponseDraft {
 
 export interface SavedResponseEntry {
     id: string;
-    kind: 'card' | 'bossFight' | 'dailyQuest';
+    kind: 'card' | 'bossFight' | 'dailyQuest' | 'timeAttack' | 'shadowQuest' | 'mirrorMatch';
     status: 'draft' | 'completed';
     title: string;
     relatedId: string;
