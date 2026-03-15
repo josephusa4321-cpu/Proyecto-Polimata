@@ -210,6 +210,26 @@ export interface CapstoneState {
     updatedAt: number;
 }
 
+export interface PracticeLabProgress {
+    status: 'not-started' | 'content-added' | 'diagnostic' | 'in-progress' | 'completed';
+    currentLevel: number;        // 0 = diagnóstico, 1-5 = ejercicios
+    diagnosticPassed: boolean;
+    exercisesCompleted: number[];
+    exerciseRatings: Record<number, 'excellent' | 'good' | 'needs-review'>;
+    exerciseResponses: Record<number, string>;  // Lo que escribió el usuario
+    diagnosticResponses: Record<number, string>;
+    selfAssessment: boolean[];   // 5 checkboxes finales
+    totalXPEarned: number;
+    completedAt?: number;
+}
+
+export interface PracticeLab {
+    cardId: string;
+    rawContent: string;          // El markdown completo que pegó el usuario
+    savedAt: number;             // Timestamp
+    progress: PracticeLabProgress;
+}
+
 export interface UserProgressState {
     xp: number;
     completedMilestones: string[];
@@ -237,6 +257,9 @@ export interface UserProgressState {
     debuffHistory: Debuff[];
     capstone: CapstoneState;
     ngPlus: NewGamePlusState;
+    practiceLabsData: PracticeLab[];
+    practiceLabsCompleted: number;
+    practiceLabsTotalXP: number;
     lastSaved: number;
 }
 
@@ -255,6 +278,9 @@ export interface GameState {
     deviceId: string;
     cloudSyncKey: string;
     progress: UserProgressState;
+    practiceLabsData: PracticeLab[];
+    practiceLabsCompleted: number;
+    practiceLabsTotalXP: number;
     responseDrafts: Record<string, SavedResponseDraft>;
     syncStatus: 'idle' | 'syncing' | 'error' | 'success';
     syncMessage: string | null;

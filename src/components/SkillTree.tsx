@@ -5,6 +5,7 @@ import { useGameStore } from '../stores/useGameStore';
 import { BossFightNode } from './BossFightNode';
 import { DailyQuestBanner } from './DailyQuestBanner';
 import { BossFightPanel } from './BossFightPanel';
+import { PracticeLabPanel } from './PracticeLab/PracticeLabPanel';
 import { CapstoneNode } from './CapstoneNode';
 import { PillarSelector } from './PillarSelector';
 import { ModuleSelector } from './ModuleSelector';
@@ -16,6 +17,7 @@ import { SavedResponsesLog } from './SavedResponsesLog';
 export const SkillTree: React.FC = () => {
     const { completedCardIds, activePillar, activeModuleId, setActivePillar, setActiveModuleId } = useGameStore();
     const [selectedCard, setSelectedCard] = useState<IConceptCard | null>(null);
+    const [practiceLabCard, setPracticeLabCard] = useState<IConceptCard | null>(null);
     const [isBossOpen, setIsBossOpen] = useState(false);
 
     // Derived State
@@ -30,6 +32,18 @@ export const SkillTree: React.FC = () => {
     const currentBossFight = useMemo(() => 
         ALL_BOSS_FIGHTS.find(bf => bf.moduleId === activeModuleId),
     [activeModuleId]);
+
+    React.useEffect(() => {
+        const handleOpenPracticeLab = (e: CustomEvent<{ cardId: string }>) => {
+            const card = ALL_CARDS.find(c => c.id === e.detail.cardId);
+            if (card) {
+                setPracticeLabCard(card);
+            }
+        };
+
+        window.addEventListener('openPracticeLab', handleOpenPracticeLab as EventListener);
+        return () => window.removeEventListener('openPracticeLab', handleOpenPracticeLab as EventListener);
+    }, []);
 
     const getCardStatus = (card: IConceptCard) => {
         if (completedCardIds.includes(card.id)) return 'completed';
@@ -121,6 +135,12 @@ export const SkillTree: React.FC = () => {
                 card={selectedCard}
                 isOpen={!!selectedCard}
                 onClose={() => setSelectedCard(null)}
+            />
+
+            <PracticeLabPanel
+                card={practiceLabCard}
+                isOpen={!!practiceLabCard}
+                onClose={() => setPracticeLabCard(null)}
             />
 
             <div className="pt-20 border-t border-border/20 mt-20">
