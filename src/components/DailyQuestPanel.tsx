@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../stores/useGameStore';
-import { Scroll, Sparkles, X, Send, BrainCircuit, CheckCircle } from 'lucide-react';
+import { Scroll, X, Send, BrainCircuit, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ResponseStatusBadge } from './ResponseStatusBadge';
 import { getResponseDraftText } from '../utils/savedResponses';
@@ -15,6 +15,17 @@ export const DailyQuestPanel: React.FC<Props> = ({ isOpen, onClose }) => {
     const { dailyQuest } = progress;
     const [answer, setAnswer] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const getQuestIcon = (type: string) => {
+        switch(type) {
+            case 'connection': return '🔗';
+            case 'application': return '🎯';
+            case 'contradiction': return '⚡';
+            case 'synthesis': return '🧬';
+            case 'realworld': return '🌍';
+            default: return '🔮';
+        }
+    };
 
     const draftKey = dailyQuest ? `daily-quest:${dailyQuest.id}` : '';
     const savedDraft = draftKey ? getResponseDraftText(responseDrafts[draftKey]) : '';
@@ -90,9 +101,9 @@ export const DailyQuestPanel: React.FC<Props> = ({ isOpen, onClose }) => {
                                     </div>
                                 </div>
 
-                                <div className="p-6 bg-primary/5 border border-primary/20 rounded-3xl relative">
-                                    <div className="absolute -top-3 -left-3 w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg">
-                                        <Sparkles size={16} />
+                                <div className={`p-6 border rounded-3xl relative transition-all ${dailyQuest.isCrossPillar ? 'border-amber-400/40 bg-amber-500/5 shadow-[0_0_50px_rgba(245,158,11,0.05)]' : 'bg-primary/5 border-primary/20'}`}>
+                                    <div className={`absolute -top-3 -left-3 w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg ${dailyQuest.isCrossPillar ? 'bg-amber-500 shadow-amber-500/30' : 'bg-primary shadow-primary/30'}`}>
+                                        <span className="text-sm">{getQuestIcon(dailyQuest.type)}</span>
                                     </div>
                                     <p className="text-xl font-black text-white leading-tight italic">
                                         {dailyQuest.question}

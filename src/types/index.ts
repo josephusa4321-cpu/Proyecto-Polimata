@@ -135,7 +135,8 @@ export interface TeachingTaxEntry {
 export interface DailyQuest {
     id: string;
     date: string; // ISO date
-    type: 'connection' | 'application' | 'contradiction';
+    type: 'connection' | 'application' | 'contradiction' | 'synthesis' | 'realworld';
+    isCrossPillar?: boolean;
     cardIds: string[];
     question: string;
     userAnswer: string | null;

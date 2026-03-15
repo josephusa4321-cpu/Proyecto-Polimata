@@ -15,7 +15,7 @@ interface PracticeLabPanelProps {
 }
 
 export const PracticeLabPanel: React.FC<PracticeLabPanelProps> = ({ cardId }) => {
-    const { progress, savePracticeLabContent, updateLabProgress, completeLabExercise } = useGameStore();
+    const { progress, savePracticeLabContent, updateLabProgress, completeLabExercise, setResponseDraft, clearResponseDraft, responseDrafts } = useGameStore();
     const labProgress = progress.practiceLabsData?.[cardId];
     const rawContent = labProgress?.content;
 
@@ -81,11 +81,13 @@ export const PracticeLabPanel: React.FC<PracticeLabPanelProps> = ({ cardId }) =>
             diagnosticResponse: response,
             status: 'draft'
         });
+        clearResponseDraft(`lab_${cardId}_diagnostic`);
         setActiveStepId('ex-1');
     };
 
     const handleExerciseComplete = (level: number, rating: 'excellent' | 'good' | 'needs-review', response: string, xp: number) => {
         completeLabExercise(cardId, level, rating, response, xp);
+        clearResponseDraft(`lab_${cardId}_ex_${level}`);
         if (level < 5 && parsedLab.exercises[level + 1]) {
             setActiveStepId(`ex-${level + 1}`);
         }
@@ -97,6 +99,8 @@ export const PracticeLabPanel: React.FC<PracticeLabPanelProps> = ({ cardId }) =>
             animate={{ opacity: 1 }}
             className="flex flex-col md:flex-row gap-6 p-1 bg-[#0a0e17]"
         >
+
+
             <LabProgressSidebar 
                 steps={steps} 
                 activeStepId={activeStepId} 
@@ -131,8 +135,9 @@ export const PracticeLabPanel: React.FC<PracticeLabPanelProps> = ({ cardId }) =>
                     <DiagnosticSection 
                         content={parsedLab.diagnostic}
                         completed={labProgress.diagnosticCompleted}
-                        savedResponse={labProgress.diagnosticResponse}
+                        savedResponse={labProgress.diagnosticResponse || responseDrafts[`lab_${cardId}_diagnostic`]?.value}
                         onComplete={handleDiagnosticComplete}
+                        onChangeResponse={(val) => setResponseDraft(`lab_${cardId}_diagnostic`, val)}
                     />
                 )}
 
@@ -151,9 +156,10 @@ export const PracticeLabPanel: React.FC<PracticeLabPanelProps> = ({ cardId }) =>
                             rubric={ex.rubric}
                             referenceAnswer={ex.referenceAnswer}
                             completed={!!responseInfo}
-                            savedResponse={responseInfo?.response}
+                            savedResponse={responseInfo?.response || responseDrafts[`lab_${cardId}_ex_${level}`]?.value}
                             savedRating={responseInfo?.rating}
                             onComplete={(rating, res, xp) => handleExerciseComplete(level, rating, res, xp)}
+                            onChangeResponse={(val) => setResponseDraft(`lab_${cardId}_ex_${level}`, val)}
                         />
                     );
                 })()}

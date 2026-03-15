@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { GameState, ReviewItem, ConceptCard, ActivatedCombo, TeachingTaxEntry, DailyQuest, ShadowQuest, TimeAttack, MirrorMatch, Debuff, RunSummary, PersistedUserState, UserProgressState, PracticeLabProgress } from '../types';
+import type { GameState, ReviewItem, ConceptCard, ActivatedCombo, TeachingTaxEntry, DailyQuest, ShadowQuest, TimeAttack, MirrorMatch, Debuff, RunSummary, PersistedUserState, UserProgressState, PracticeLabProgress, CardContent } from '../types';
 import { LEVELS } from '../data/levels';
 import { supabase } from '../lib/supabase';
 import { createInitialProgressState, getDefaultStoreState, buildProgressFromState, getProgressMirror, mergeProgressState, migrateLegacyProgressState } from './progressState';
@@ -16,6 +16,7 @@ type SyncOptions = {
 type CloudGameState = {
     schemaVersion: 2;
     progress: UserProgressState;
+    contentStore?: Record<string, CardContent>;
 };
 
 let syncStatusTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -54,6 +55,7 @@ const formatSyncError = (error: unknown) => {
 const buildCloudGameState = (state: GameState): CloudGameState => ({
     schemaVersion: 2,
     progress: buildProgressFromState(state),
+    contentStore: state.contentStore,
 });
 
 const normalizeCloudState = (
@@ -68,7 +70,8 @@ const normalizeCloudState = (
 
     return {
         schemaVersion: 2,
-        progress: migrateLegacyProgressState(progressSource, fallbackLastSaved)
+        progress: migrateLegacyProgressState(progressSource, fallbackLastSaved),
+        contentStore: 'contentStore' in cloudState ? (cloudState as any).contentStore : undefined
     };
 };
 
@@ -629,6 +632,7 @@ export const useGameStore = create<GameState & GameActions>()(
 
                         set((localState) => ({
                             progress: mergeProgressState(localState.progress, cloudState.progress),
+                            contentStore: { ...localState.contentStore, ...((cloudState as any).contentStore || {}) },
                             syncStatus: trigger === 'manual' ? 'success' : 'idle',
                             syncMessage: trigger === 'manual'
                                 ? `Se fusiono el progreso local con la nube para ${syncKey}.`
@@ -880,22 +884,21 @@ export const useGameStore = create<GameState & GameActions>()(
                 // Need at least 2 cards to generate a quest
                 if (completedCardIds.length < 2) return;
 
-                const { QUEST_TEMPLATES } = await import('../data/quest-templates');
-                const types: Array<'connection' | 'application' | 'contradiction'> = ['connection', 'application', 'contradiction'];
-                const questType = types[Math.floor(Math.random() * types.length)];
-                
-                const templates = QUEST_TEMPLATES[questType];
-                const template = templates[Math.floor(Math.random() * templates.length)];
+                const { selectQuestTemplate } = await import('../data/quest-templates');
+                const { ALL_CARDS } = await import('../data/all-modules');
+                const { PILLARS } = await import('../data/pillars');
 
-                // Pick random completed cards based on template placeholders
-                const placeholderCount = (template.match(/\{card\d+\}/g) || []).length;
+                // Shuffle completed card IDs and take 2 for templates
                 const shuffled = [...completedCardIds].sort(() => 0.5 - Math.random());
                 
-                if (shuffled.length < placeholderCount) return; // Not enough cards for THIS template
+                if (shuffled.length < 2) return; // Need at least 2 cards to combine
 
-                const cardIds = shuffled.slice(0, placeholderCount);
+                const cardIds = shuffled.slice(0, 2);
+                const pillar1Id = parseInt(cardIds[0].split('.')[0], 10) || 1;
+                const pillar2Id = parseInt(cardIds[1].split('.')[0], 10) || 1;
 
-                const { ALL_CARDS } = await import('../data/all-modules');
+                const { type: questType, template, isCrossPillar } = selectQuestTemplate(completedCardIds.length, pillar1Id, pillar2Id);
+
                 const cardTitles = cardIds.map(id => ALL_CARDS.find(c => c.id === id)?.title || id);
 
                 let question = template;
@@ -903,16 +906,39 @@ export const useGameStore = create<GameState & GameActions>()(
                     question = question.replace(new RegExp(`\\{card${index + 1}\\}`, 'g'), title);
                 });
 
+                // Pillar placeholders for combo quests
+                const pillar1Obj = PILLARS.find(p => p.id === pillar1Id);
+                const pillar2Obj = PILLARS.find(p => p.id === pillar2Id);
+
+                question = question.replace(/\{pillar1\}/g, String(pillar1Id));
+                question = question.replace(/\{pillar2\}/g, String(pillar2Id));
+                question = question.replace(/\{pillar1Name\}/g, pillar1Obj?.name || `Pilar ${pillar1Id}`);
+                question = question.replace(/\{pillar2Name\}/g, pillar2Obj?.name || `Pilar ${pillar2Id}`);
+
+                // Calculate base XP based on difficulty, plus 10 if cross-pillar
+                const difficulty = completedCardIds.length >= 80 ? 'expert' 
+                  : completedCardIds.length >= 30 ? 'advanced'
+                  : completedCardIds.length >= 10 ? 'intermediate' 
+                  : 'beginner';
+                
+                let xpReward = difficulty === 'expert' ? 50 
+                  : difficulty === 'advanced' ? 40 
+                  : difficulty === 'intermediate' ? 30 
+                  : 25;
+                
+                if (isCrossPillar) xpReward += 10;
+
                 const newQuest: DailyQuest = {
                     id: `quest-${today}`,
                     date: today,
                     type: questType,
+                    isCrossPillar,
                     cardIds,
                     question,
                     userAnswer: null,
                     completed: false,
                     completedAt: null,
-                    xpReward: 25,
+                    xpReward,
                     updatedAt: Date.now()
                 };
 

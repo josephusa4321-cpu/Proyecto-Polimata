@@ -24,7 +24,9 @@ const formatResponseTimestamp = (timestamp: number) =>
 export const SavedResponsesLog: React.FC = () => {
     const {
         progress,
-        responseDrafts
+        responseDrafts,
+        setResponseDraft,
+        clearResponseDraft
     } = useGameStore();
 
     const {
@@ -39,6 +41,16 @@ export const SavedResponsesLog: React.FC = () => {
 
     const [isExpanded, setIsExpanded] = React.useState(true);
     const [selectedEntry, setSelectedEntry] = React.useState<SavedResponseEntry | null>(null);
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [editText, setEditText] = React.useState('');
+    const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
+
+    const handleSelectEntry = (entry: SavedResponseEntry | null) => {
+        setSelectedEntry(entry);
+        setIsEditing(false);
+        setShowConfirmDelete(false);
+        setEditText(entry ? entry.content : '');
+    };
 
     const entries = React.useMemo(
         () => buildSavedResponseEntries({
@@ -106,7 +118,7 @@ export const SavedResponsesLog: React.FC = () => {
                                         <button
                                             key={entry.id}
                                             type="button"
-                                            onClick={() => setSelectedEntry(entry)}
+                                            onClick={() => handleSelectEntry(entry)}
                                             className="w-full rounded-[26px] border border-white/10 bg-black/20 p-5 text-left hover:border-primary/30 hover:bg-primary/5 transition-all"
                                         >
                                             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -142,7 +154,7 @@ export const SavedResponsesLog: React.FC = () => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className="fixed inset-0 z-[220] bg-black/70 backdrop-blur-md"
-                            onClick={() => setSelectedEntry(null)}
+                            onClick={() => handleSelectEntry(null)}
                         />
                         <motion.div
                             initial={{ opacity: 0, y: 24 }}
@@ -165,7 +177,7 @@ export const SavedResponsesLog: React.FC = () => {
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={() => setSelectedEntry(null)}
+                                    onClick={() => handleSelectEntry(null)}
                                     className="p-2 rounded-full text-white/40 hover:bg-white/5 hover:text-white transition-colors"
                                 >
                                     <X size={20} />
@@ -173,8 +185,79 @@ export const SavedResponsesLog: React.FC = () => {
                             </div>
                             <div className="max-h-[60vh] overflow-y-auto p-6 custom-scrollbar">
                                 <div className="rounded-[24px] border border-white/10 bg-black/20 p-5">
-                                    <p className="whitespace-pre-wrap text-white/80 leading-relaxed">{selectedEntry.content}</p>
+                                    {isEditing ? (
+                                        <textarea
+                                            value={editText}
+                                            onChange={(e) => setEditText(e.target.value)}
+                                            className="w-full h-40 bg-[#0a0e17] border border-white/10 rounded-xl p-3 text-white/80 focus:outline-none focus:border-primary/50 disabled:opacity-75 resize-none"
+                                        />
+                                    ) : (
+                                        <p className="whitespace-pre-wrap text-white/80 leading-relaxed">{selectedEntry.content}</p>
+                                    )}
                                 </div>
+
+                                {(() => {
+                                    const isEditable = selectedEntry.status === 'draft' || selectedEntry.kind === 'card' || selectedEntry.kind === 'bossFight';
+                                    if (!isEditable) return null;
+
+                                    return (
+                                        <div className="flex gap-2 mt-4">
+                                            {isEditing ? (
+                                                <>
+                                                    <button
+                                                        onClick={() => {
+                                                            setResponseDraft(selectedEntry.id, editText);
+                                                            setSelectedEntry({ ...selectedEntry, content: editText });
+                                                            setIsEditing(false);
+                                                        }}
+                                                        className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-2xl text-center cursor-pointer transition-colors"
+                                                    >
+                                                        Guardar Cambios
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setIsEditing(false)}
+                                                        className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white/70 font-semibold rounded-2xl text-center cursor-pointer transition-colors"
+                                                    >
+                                                        Cancelar
+                                                    </button>
+                                                </>
+                                            ) : showConfirmDelete ? (
+                                                <>
+                                                    <button
+                                                        onClick={() => {
+                                                            clearResponseDraft(selectedEntry.id);
+                                                            handleSelectEntry(null);
+                                                        }}
+                                                        className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-2xl text-center cursor-pointer transition-colors"
+                                                    >
+                                                        Confirmar Borrado
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setShowConfirmDelete(false)}
+                                                        className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white/70 font-semibold rounded-2xl text-center cursor-pointer transition-colors"
+                                                    >
+                                                        Volver
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        onClick={() => setIsEditing(true)}
+                                                        className="flex-1 py-2 bg-primary/20 hover:bg-primary/30 text-primary font-semibold rounded-2xl text-sm text-center border border-primary/30 cursor-pointer transition-colors"
+                                                    >
+                                                        Editar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setShowConfirmDelete(true)}
+                                                        className="flex-1 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 font-semibold rounded-2xl text-sm text-center border border-red-500/20 cursor-pointer transition-colors"
+                                                    >
+                                                        Borrar
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </motion.div>
                     </>

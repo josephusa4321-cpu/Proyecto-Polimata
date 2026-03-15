@@ -10,15 +10,16 @@ interface ExerciseSectionProps {
     title: string;
     description: string;
     rubric?: string;
-    referenceAnswer?: string; // New
+    referenceAnswer?: string;
     completed: boolean;
     onComplete: (rating: 'excellent' | 'good' | 'needs-review', response: string, xp: number) => void;
     savedResponse?: string;
     savedRating?: 'excellent' | 'good' | 'needs-review';
+    onChangeResponse?: (value: string) => void;
 }
 
 export const ExerciseSection: React.FC<ExerciseSectionProps> = ({ 
-    level, title, description, rubric, referenceAnswer, completed, onComplete, savedResponse = '', savedRating 
+    level, title, description, rubric, referenceAnswer, completed, onComplete, savedResponse = '', savedRating, onChangeResponse 
 }) => {
     const [response, setResponse] = useState(savedResponse);
     const [rating, setRating] = useState<'excellent' | 'good' | 'needs-review' | null>(savedRating || null);
@@ -59,7 +60,10 @@ export const ExerciseSection: React.FC<ExerciseSectionProps> = ({
                 <label className="text-sm font-semibold text-slate-400">Tu Solución</label>
                 <textarea
                     value={response}
-                    onChange={(e) => setResponse(e.target.value)}
+                    onChange={(e) => {
+                        setResponse(e.target.value);
+                        if (onChangeResponse) onChangeResponse(e.target.value);
+                    }}
                     disabled={completed}
                     placeholder="Escribe tu respuesta aquí..."
                     className="w-full h-40 bg-[#0a0e17] border border-slate-800 rounded-lg p-3 text-slate-200 focus:outline-none focus:border-cyan-500 disabled:opacity-75 resize-none"

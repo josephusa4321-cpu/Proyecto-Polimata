@@ -9,9 +9,10 @@ interface DiagnosticSectionProps {
     completed: boolean;
     onComplete: (response: string) => void;
     savedResponse?: string;
+    onChangeResponse?: (value: string) => void;
 }
 
-export const DiagnosticSection: React.FC<DiagnosticSectionProps> = ({ content, completed, onComplete, savedResponse = '' }) => {
+export const DiagnosticSection: React.FC<DiagnosticSectionProps> = ({ content, completed, onComplete, savedResponse = '', onChangeResponse }) => {
     const [response, setResponse] = useState(savedResponse);
 
     return (
@@ -30,7 +31,10 @@ export const DiagnosticSection: React.FC<DiagnosticSectionProps> = ({ content, c
                 <label className="text-sm font-semibold text-slate-400">Tu Diagnóstico / Reflexión</label>
                 <textarea
                     value={response}
-                    onChange={(e) => setResponse(e.target.value)}
+                    onChange={(e) => {
+                        setResponse(e.target.value);
+                        if (onChangeResponse) onChangeResponse(e.target.value);
+                    }}
                     disabled={completed}
                     placeholder="Escribe aquí tu análisis inicial o respuestas..."
                     className="w-full h-32 bg-[#0a0e17] border border-slate-800 rounded-lg p-3 text-slate-200 focus:outline-none focus:border-cyan-500 disabled:opacity-75"
