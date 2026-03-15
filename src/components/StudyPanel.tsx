@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { ConceptCard as IConceptCard } from '../types';
 import { useGameStore } from '../stores/useGameStore';
-import { X, CheckCircle2, Key, Info, ClipboardPaste, Brain } from 'lucide-react';
+import { X, CheckCircle2, Key, Info, ClipboardPaste, Brain, Beaker } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -35,6 +35,7 @@ export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
     const [isHonest, setIsHonest] = useState(false);
 
     const isCompleted = card ? completedCardIds.includes(card.id) : false;
+    const hasPracticeLab = card ? useGameStore.getState().practiceLabsData.some(lab => lab.cardId === card.id) : false;
     const hasApiKey = !!getApiKey();
     const manualContent = card ? contentStore[card.id]?.markdown : null;
     const recallDraftKey = card ? `card-recall:${card.id}` : '';
@@ -107,6 +108,22 @@ export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
                                     {card.isTool && <span className="text-[10px] font-bold bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full uppercase">Herramienta</span>}
                                 </div>
                                 <h2 className="text-4xl font-black text-white mb-2 leading-tight">{card.title}</h2>
+                                {isCompleted && (
+                                    <button
+                                        onClick={() => {
+                                            onClose();
+                                            // the skill tree will handle opening the practice lab panel using an event or state
+                                            const event = new CustomEvent('openPracticeLab', { detail: { cardId: card.id } });
+                                            window.dispatchEvent(event);
+                                        }}
+                                        className={`mt-4 px-4 py-2 flex items-center gap-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg
+                                            ${hasPracticeLab ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/30' : 'bg-primary hover:bg-white text-white hover:text-primary shadow-primary/20'}
+                                        `}
+                                    >
+                                        <Beaker size={14} />
+                                        {hasPracticeLab ? '🧪 Practice Lab Guardado' : '🧪 Practice Lab'}
+                                    </button>
+                                )}
                                 <p className="text-lg text-white/40 leading-relaxed font-medium">{card.subtitle}</p>
                             </div>
 

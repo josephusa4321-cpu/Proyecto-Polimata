@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { GameState, ReviewItem, ConceptCard, ActivatedCombo, TeachingTaxEntry, DailyQuest, ShadowQuest, TimeAttack, MirrorMatch, Debuff, RunSummary, PersistedUserState, UserProgressState } from '../types';
+import type { GameState, ReviewItem, ConceptCard, ActivatedCombo, TeachingTaxEntry, DailyQuest, ShadowQuest, TimeAttack, MirrorMatch, Debuff, RunSummary, PersistedUserState, UserProgressState, PracticeLab, PracticeLabProgress } from '../types';
 import { LEVELS } from '../data/levels';
 import { supabase } from '../lib/supabase';
 import { createInitialProgressState, getDefaultStoreState, buildProgressFromState, getProgressMirror, mergeProgressState, migrateLegacyProgressState } from './progressState';
@@ -150,6 +150,8 @@ interface GameActions {
     closeCapstonePanel: () => void;
     completeCapstone: (submission: string) => void;
     startNewGamePlus: () => void;
+    savePracticeLab: (cardId: string, markdown: string) => void;
+    updatePracticeLabProgress: (cardId: string, progressUpdate: Partial<PracticeLabProgress>) => void;
     setSyncId: (id: string) => void;
     resetProgress: () => void;
 }
@@ -314,30 +316,40 @@ export const useGameStore = create<GameState & GameActions>()(
             getCachedContent: (cardId: string) => get().contentCache[cardId]?.content || null,
 
             saveReview: (cardId: string, success: boolean) => {
-                const { reviews } = get();
+                const { reviews, practiceLabsData } = get();
                 const intervals = [1, 3, 7, 21, 60];
                 const existingReview = reviews.find(r => r.cardId === cardId);
                 const now = Date.now();
                 const retryDelayMs = 10 * 60 * 1000;
 
+                const hasCompletedLab = practiceLabsData.some(
+                    lab => lab.cardId === cardId && lab.progress.status === 'completed'
+                );
+
+                const multiplier = hasCompletedLab ? 1.5 : 1;
+
                 let nextReviewItem: ReviewItem;
 
                 if (existingReview && success) {
                     const nextLevel = success ? Math.min(intervals.length - 1, existingReview.level + 1) : 0;
+                    const intervalDays = intervals[nextLevel] * multiplier;
+
                     nextReviewItem = {
                         ...existingReview,
                         level: nextLevel,
-                        interval: intervals[nextLevel],
-                        nextReview: now + intervals[nextLevel] * 24 * 60 * 60 * 1000,
+                        interval: intervalDays,
+                        nextReview: now + intervalDays * 24 * 60 * 60 * 1000,
                         updatedAt: now
                     };
                 } else {
+                    const intervalDays = success ? intervals[0] * multiplier : 0;
+
                     nextReviewItem = {
                         cardId,
                         level: 0,
-                        interval: success ? intervals[0] : 0,
+                        interval: intervalDays,
                         nextReview: success
-                            ? now + intervals[0] * 24 * 60 * 60 * 1000
+                            ? now + intervalDays * 24 * 60 * 60 * 1000
                             : now + retryDelayMs,
                         updatedAt: now
                     };
@@ -1095,6 +1107,60 @@ export const useGameStore = create<GameState & GameActions>()(
                 get().checkAchievements();
             },
 
+            savePracticeLab: (cardId: string, markdown: string) => {
+                const { practiceLabsData } = get();
+                const existingLab = practiceLabsData.find(lab => lab.cardId === cardId);
+
+                const newLab: PracticeLab = {
+                    cardId,
+                    rawContent: markdown,
+                    savedAt: Date.now(),
+                    progress: existingLab ? existingLab.progress : {
+                        status: 'content-added',
+                        currentLevel: 0,
+                        diagnosticPassed: false,
+                        exercisesCompleted: [],
+                        exerciseRatings: {},
+                        exerciseResponses: {},
+                        diagnosticResponses: {},
+                        selfAssessment: [],
+                        totalXPEarned: 0
+                    }
+                };
+
+                set((state) => ({
+                    practiceLabsData: [...state.practiceLabsData.filter(lab => lab.cardId !== cardId), newLab],
+                    lastSaved: Date.now()
+                }));
+            },
+
+            updatePracticeLabProgress: (cardId: string, progressUpdate: Partial<PracticeLabProgress>) => {
+                const { practiceLabsData } = get();
+                const existingLab = practiceLabsData.find(lab => lab.cardId === cardId);
+
+                if (!existingLab) return;
+
+                const updatedProgress = { ...existingLab.progress, ...progressUpdate };
+                const newTotalXP = updatedProgress.totalXPEarned || 0;
+                const xpDiff = newTotalXP - (existingLab.progress.totalXPEarned || 0);
+
+                const updatedLab: PracticeLab = {
+                    ...existingLab,
+                    progress: updatedProgress
+                };
+
+                const isNewlyCompleted = existingLab.progress.status !== 'completed' && updatedProgress.status === 'completed';
+
+                set((state) => ({
+                    practiceLabsData: [...state.practiceLabsData.filter(lab => lab.cardId !== cardId), updatedLab],
+                    practiceLabsTotalXP: state.practiceLabsTotalXP + xpDiff,
+                    xp: state.xp + xpDiff,
+                    practiceLabsCompleted: state.practiceLabsCompleted + (isNewlyCompleted ? 1 : 0),
+                    lastXPGain: xpDiff > 0 ? { amount: xpDiff, timestamp: Date.now() } : state.lastXPGain,
+                    lastSaved: Date.now()
+                }));
+            },
+
             startNewGamePlus: () => {
                 const state = get();
                 const lastRunEnd = state.ngPlus.previousRuns.length > 0 
@@ -1140,6 +1206,9 @@ export const useGameStore = create<GameState & GameActions>()(
                         xpReward: 500,
                         updatedAt: Date.now()
                     },
+                    practiceLabsData: [],
+                    practiceLabsCompleted: 0,
+                    practiceLabsTotalXP: 0,
                     lastSaved: Date.now()
                 }));
 
