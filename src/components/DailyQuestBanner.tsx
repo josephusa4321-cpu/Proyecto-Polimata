@@ -7,7 +7,8 @@ import { ResponseStatusBadge } from './ResponseStatusBadge';
 import { getResponseDraftText } from '../utils/savedResponses';
 
 export const DailyQuestBanner: React.FC = () => {
-    const { dailyQuest, checkDailyQuest, completedCardIds, responseDrafts } = useGameStore();
+    const { progress, checkDailyQuest, completedCardIds, responseDrafts } = useGameStore();
+    const { dailyQuest } = progress;
     const [isPanelOpen, setIsPanelOpen] = useState(false);
 
     useEffect(() => {

@@ -14,13 +14,13 @@ export const HUD: React.FC = () => {
         streakDays, 
         isTaxDue, 
         openTaxModal,
-        activeShadowQuest,
         openShadowQuestModal,
         checkTimeAttack,
-        activeMirrorMatch,
         openMirrorMatchModal,
         ngPlus,
+        progress
     } = useGameStore();
+    const { activeShadowQuest, activeMirrorMatch } = progress;
     const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
     const currentLevelNum = getCurrentLevel();
     const currentLevel = LEVELS.find(l => l.level === currentLevelNum) || LEVELS[0];

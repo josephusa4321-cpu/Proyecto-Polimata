@@ -4,7 +4,8 @@ import { Eye, Send, X, MapPin, Camera, ClipboardCheck, Sparkles } from 'lucide-r
 import { motion, AnimatePresence } from 'motion/react';
 
 export const ShadowQuestPanel: React.FC = () => {
-    const { activeShadowQuest, shadowQuestModalOpen, closeShadowQuestModal, completeShadowQuest } = useGameStore();
+    const { progress, shadowQuestModalOpen, closeShadowQuestModal, completeShadowQuest } = useGameStore();
+    const { activeShadowQuest } = progress;
     const [observation, setObservation] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 

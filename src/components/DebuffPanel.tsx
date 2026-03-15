@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import * as Icons from 'lucide-react';
 
 export const DebuffPanel: React.FC = () => {
-    const { debuffPanelOpen, closeDebuffPanel, applyDebuff, debuffHistory } = useGameStore();
+    const { progress, debuffPanelOpen, closeDebuffPanel, applyDebuff } = useGameStore();
+    const { debuffHistory } = progress;
     const [selectedBiasId, setSelectedBiasId] = useState<string | null>(null);
     const [context, setContext] = useState("");
     const [showSuccess, setShowSuccess] = useState(false);

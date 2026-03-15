@@ -4,7 +4,8 @@ import { FlipHorizontal, Send, X, Scale, Sparkles, Swords } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const MirrorMatchPanel: React.FC = () => {
-    const { activeMirrorMatch, mirrorMatchModalOpen, closeMirrorMatchModal, completeMirrorMatch, ngPlus } = useGameStore();
+    const { progress, mirrorMatchModalOpen, closeMirrorMatchModal, completeMirrorMatch, ngPlus } = useGameStore();
+    const { activeMirrorMatch } = progress;
     const [argument, setArgument] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 

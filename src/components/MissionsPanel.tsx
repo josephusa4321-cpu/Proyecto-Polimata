@@ -9,10 +9,11 @@ import { DailyQuestBanner } from './DailyQuestBanner';
 
 export const MissionsPanel: React.FC = () => {
     const {
-        activeShadowQuest, openShadowQuestModal,
-        activeMirrorMatch, openMirrorMatchModal,
-        activeTimeAttack, checkTimeAttack, completedCardIds
+        progress, openShadowQuestModal,
+        openMirrorMatchModal,
+        checkTimeAttack, completedCardIds
     } = useGameStore();
+    const { activeShadowQuest, activeMirrorMatch, activeTimeAttack } = progress;
 
     const hasMissions = completedCardIds.length >= 2;
 

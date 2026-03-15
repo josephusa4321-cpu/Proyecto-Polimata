@@ -1,5 +1,5 @@
 import { ALL_BOSS_FIGHTS, ALL_CARDS } from '../data/all-modules';
-import type { DailyQuest, GameState, SavedResponseDraft, SavedResponseEntry, TimeAttack, ShadowQuest, MirrorMatch } from '../types';
+import type { DailyQuest, SavedResponseDraft, SavedResponseEntry, TimeAttack, ShadowQuest, MirrorMatch } from '../types';
 
 type DraftInput = Record<string, string | SavedResponseDraft> | null | undefined;
 

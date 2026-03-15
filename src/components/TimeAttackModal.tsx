@@ -5,11 +5,12 @@ import { Zap, Timer, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 
 export const TimeAttackModal: React.FC = () => {
     const { 
-        activeTimeAttack, 
+        progress: storeProgress,
         timeAttackModalOpen, 
         closeTimeAttackModal, 
         completeTimeAttack 
     } = useGameStore();
+    const { activeTimeAttack } = storeProgress;
 
     const [answer, setAnswer] = useState('');
     const [secondsLeft, setSecondsLeft] = useState(60);

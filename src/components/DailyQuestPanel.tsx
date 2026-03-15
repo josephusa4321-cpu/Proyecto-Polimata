@@ -11,7 +11,8 @@ interface Props {
 }
 
 export const DailyQuestPanel: React.FC<Props> = ({ isOpen, onClose }) => {
-    const { dailyQuest, completeDailyQuest, responseDrafts, setResponseDraft, clearResponseDraft } = useGameStore();
+    const { progress, completeDailyQuest, responseDrafts, setResponseDraft, clearResponseDraft } = useGameStore();
+    const { dailyQuest } = progress;
     const [answer, setAnswer] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
