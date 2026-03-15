@@ -15,11 +15,13 @@ export const CapstonePanel: React.FC = () => {
         completedCardIds,
         completedBossFights,
         taxesPaid,
-        questHistory,
-        mirrorMatchHistory,
-        debuffHistory,
-        streakDays
+        streakDays,
+        progress
     } = useGameStore();
+
+    const questHistory = progress?.questHistory || [];
+    const mirrorMatchHistory = progress?.mirrorMatchHistory || [];
+    const debuffHistory = progress?.debuffHistory || [];
 
     const [submission, setSubmission] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);

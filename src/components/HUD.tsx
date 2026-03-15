@@ -62,10 +62,27 @@ export const HUD: React.FC = () => {
                         </div>
                         <div className="text-right">
                             <div className="flex items-center gap-1 justify-end text-xs text-white/50 uppercase font-semibold">
-                                <Flame size={11} className="text-orange-500" />
+                                <div className="relative flex items-center justify-center">
+                                    <AnimatePresence>
+                                        {streakDays >= 3 && (
+                                            <motion.div
+                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                animate={{ 
+                                                    opacity: [0.3, 0.8, 0.3], 
+                                                    scale: [1, 1.3, 1],
+                                                }}
+                                                transition={{ repeat: Infinity, duration: 1, ease: 'easeInOut' }}
+                                                className="absolute inset-0 bg-orange-500/40 rounded-full blur-md -z-10"
+                                            />
+                                        )}
+                                    </AnimatePresence>
+                                    <Flame size={12} className={`${streakDays >= 3 ? 'text-orange-400 animate-pulse' : 'text-orange-500'}`} />
+                                </div>
                                 <span>Racha</span>
                             </div>
-                            <p className="text-lg font-bold text-white leading-none">{streakDays} Días</p>
+                            <p className={`text-lg font-bold leading-none ${streakDays >= 3 ? 'text-orange-400 drop-shadow-[0_0_12px_rgba(249,115,22,0.8)]' : 'text-white'}`}>
+                                {streakDays} Días
+                            </p>
                         </div>
                     </div>
 

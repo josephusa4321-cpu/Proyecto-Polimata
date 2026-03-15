@@ -24,7 +24,9 @@ import {
 } from 'lucide-react';
 
 export const AchievementsPanel: React.FC = () => {
-    const { unlockedAchievements, taxesPaid, shadowQuestHistory, mirrorMatchHistory } = useGameStore();
+    const { unlockedAchievements, taxesPaid, progress } = useGameStore();
+    const shadowQuestHistory = progress?.shadowQuestHistory || [];
+    const mirrorMatchHistory = progress?.mirrorMatchHistory || [];
 
     const isUnlocked = (id: string) => unlockedAchievements.some(u => u.achievementId === id);
     const getUnlockDate = (id: string) => {

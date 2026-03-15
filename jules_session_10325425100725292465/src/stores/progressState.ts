@@ -9,6 +9,7 @@ import type {
     MirrorMatch,
     NewGamePlusState,
     PersistedUserState,
+    PracticeLab,
     ReviewItem,
     ShadowQuest,
     TimeAttack,
@@ -315,6 +316,19 @@ const mergeNgPlus = (local: NewGamePlusState, incoming: NewGamePlusState) => {
     };
 };
 
+const mergePracticeLabs = (local: PracticeLab[], incoming: PracticeLab[]) => {
+    const merged = new Map<string, PracticeLab>();
+
+    [...local, ...incoming].forEach((lab) => {
+        const existing = merged.get(lab.cardId);
+        if (!existing || lab.savedAt >= existing.savedAt) {
+            merged.set(lab.cardId, lab);
+        }
+    });
+
+    return Array.from(merged.values()).sort((a, b) => a.savedAt - b.savedAt);
+};
+
 const resolveTaxState = (local: UserProgressState, incoming: UserProgressState) => {
     const candidates = [local, incoming].sort((a, b) => b.lastSaved - a.lastSaved);
     const active = candidates.find((candidate) => candidate.isTaxDue && candidate.currentTaxCard);
@@ -412,8 +426,8 @@ const recalculateProgressXP = (
     if (progress.capstone.isCompleted) {
         total += progress.capstone.xpReward;
     }
-
-    total += progress.practiceLabsTotalXP || 0;
+    
+    total += progress.practiceLabsTotalXP;
 
     return usedFallback ? Math.max(total, localXP, incomingXP) : total;
 };
@@ -445,7 +459,7 @@ export const createInitialProgressState = (): UserProgressState => ({
     debuffHistory: [],
     capstone: createInitialCapstone(),
     ngPlus: createInitialNgPlus(),
-    practiceLabsData: {},
+    practiceLabsData: [],
     practiceLabsCompleted: 0,
     practiceLabsTotalXP: 0,
     lastSaved: 0
@@ -473,7 +487,8 @@ export const hasMeaningfulProgress = (progress: Partial<UserProgressState> | Par
         || normalized.activeMirrorMatch !== null
         || normalized.activeTimeAttack !== null
         || normalized.capstone.isCompleted
-        || normalized.ngPlus.ngPlusCount > 0;
+        || normalized.ngPlus.ngPlusCount > 0
+        || normalized.practiceLabsCompleted > 0;
 };
 
 export const getProgressMirror = (progress: UserProgressState) => ({
@@ -550,9 +565,9 @@ export const buildProgressFromState = (state: ProgressSource): UserProgressState
         debuffHistory: state.debuffHistory ?? seed.debuffHistory,
         capstone: normalizeCapstone(state.capstone ?? seed.capstone, fallbackLastSaved),
         ngPlus: normalizeNgPlus(state.ngPlus ?? seed.ngPlus, fallbackLastSaved),
-        practiceLabsData: state.practiceLabsData ?? seed.practiceLabsData ?? {},
-        practiceLabsCompleted: state.practiceLabsCompleted ?? seed.practiceLabsCompleted ?? 0,
-        practiceLabsTotalXP: state.practiceLabsTotalXP ?? seed.practiceLabsTotalXP ?? 0,
+        practiceLabsData: state.practiceLabsData ?? seed.practiceLabsData,
+        practiceLabsCompleted: state.practiceLabsCompleted ?? seed.practiceLabsCompleted,
+        practiceLabsTotalXP: state.practiceLabsTotalXP ?? seed.practiceLabsTotalXP,
         lastSaved: fallbackLastSaved
     };
 };
@@ -602,9 +617,9 @@ export const migrateLegacyProgressState = (
         debuffHistory: candidate.debuffHistory ? [...candidate.debuffHistory] : initial.debuffHistory,
         capstone: normalizeCapstone(candidate.capstone, lastSaved),
         ngPlus: normalizeNgPlus(candidate.ngPlus, lastSaved),
-        practiceLabsData: candidate.practiceLabsData ?? initial.practiceLabsData ?? {},
-        practiceLabsCompleted: candidate.practiceLabsCompleted ?? initial.practiceLabsCompleted ?? 0,
-        practiceLabsTotalXP: candidate.practiceLabsTotalXP ?? initial.practiceLabsTotalXP ?? 0,
+        practiceLabsData: candidate.practiceLabsData ? [...candidate.practiceLabsData] : initial.practiceLabsData,
+        practiceLabsCompleted: candidate.practiceLabsCompleted ?? initial.practiceLabsCompleted,
+        practiceLabsTotalXP: candidate.practiceLabsTotalXP ?? initial.practiceLabsTotalXP,
         lastSaved
     };
 };
@@ -658,14 +673,6 @@ export const mergeProgressState = (
         mergedTimeHistory
     );
     const mergedTaxState = resolveTaxState(localProgress, incomingProgress);
-    
-    const mergedPracticeLabsData = { ...(localProgress.practiceLabsData || {}) };
-    Object.entries(incomingProgress.practiceLabsData || {}).forEach(([cardId, incomingLab]) => {
-        const localLab = mergedPracticeLabsData[cardId];
-        if (!localLab || (incomingLab.updatedAt || 0) >= (localLab.updatedAt || 0)) {
-            mergedPracticeLabsData[cardId] = incomingLab as any; // Cast typing for now
-        }
-    });
 
     const mergedProgress: UserProgressState = {
         xp: 0,
@@ -699,9 +706,9 @@ export const mergeProgressState = (
         debuffHistory: mergeRecordsById(localProgress.debuffHistory, incomingProgress.debuffHistory, (debuff) => debuff.detectedAt),
         capstone: mergedCapstone,
         ngPlus: mergedNgPlus,
-        practiceLabsData: mergedPracticeLabsData,
-        practiceLabsCompleted: Math.max(localProgress.practiceLabsCompleted || 0, incomingProgress.practiceLabsCompleted || 0),
-        practiceLabsTotalXP: Math.max(localProgress.practiceLabsTotalXP || 0, incomingProgress.practiceLabsTotalXP || 0),
+        practiceLabsData: mergePracticeLabs(localProgress.practiceLabsData, incomingProgress.practiceLabsData),
+        practiceLabsCompleted: Math.max(localProgress.practiceLabsCompleted, incomingProgress.practiceLabsCompleted),
+        practiceLabsTotalXP: Math.max(localProgress.practiceLabsTotalXP, incomingProgress.practiceLabsTotalXP),
         lastSaved: Math.max(localProgress.lastSaved, incomingProgress.lastSaved)
     };
 

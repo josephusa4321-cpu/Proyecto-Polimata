@@ -1,7 +1,7 @@
 import React from 'react';
 import type { ConceptCard as IConceptCard, ReviewItem } from '../types';
 import { useGameStore } from '../stores/useGameStore';
-import { Lock, CheckCircle, ArrowRight, Zap, Brain, ClipboardPaste } from 'lucide-react';
+import { Lock, CheckCircle, ArrowRight, Zap, Brain, ClipboardPaste, Beaker } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ResponseStatusBadge } from './ResponseStatusBadge';
 import { getResponseDraftText } from '../utils/savedResponses';
@@ -13,19 +13,16 @@ interface Props {
 }
 
 export const ConceptCard: React.FC<Props> = ({ card, status, onClick }) => {
-    const { completedCardIds, reviews, contentStore, openContentEditor, responseDrafts, progress } = useGameStore();
+    const { progress, completedCardIds, reviews, contentStore, openContentEditor, responseDrafts } = useGameStore();
 
     const isLocked = status === 'locked';
     const isCompleted = completedCardIds.includes(card.id);
+    const hasPracticeLab = progress.practiceLabsData.some(lab => lab.cardId === card.id && lab.progress.status === 'completed');
     const hasManualContent = !!contentStore[card.id];
     const recallResponse = getResponseDraftText(responseDrafts[`card-recall:${card.id}`]);
     const responseStatus = recallResponse.trim()
         ? (isCompleted ? 'completed' : 'draft')
         : null;
-
-    const lab = progress.practiceLabsData?.[card.id];
-    const hasPracticeLab = !!lab?.content;
-    const isLabCompleted = lab?.status === 'completed';
 
     // Check if needs review (SRS)
     const review = reviews.find((r: ReviewItem) => r.cardId === card.id);
@@ -46,7 +43,7 @@ export const ConceptCard: React.FC<Props> = ({ card, status, onClick }) => {
             `}
         >
             <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter
                         ${card.type === 'fundamental' ? 'bg-green-500/20 text-green-400' :
                             card.type === 'intermediate' ? 'bg-blue-500/20 text-blue-400' :
@@ -55,6 +52,11 @@ export const ConceptCard: React.FC<Props> = ({ card, status, onClick }) => {
                         <span>{card.type}</span>
                         {hasManualContent && <span className="text-[10px]" title="Contenido manual cargado">📝</span>}
                     </div>
+                    {hasPracticeLab && (
+                        <div className="bg-cyan-500/20 text-cyan-400 p-1 rounded-full border border-cyan-500/30" title="Practice Lab Completado">
+                            <Beaker size={12} strokeWidth={3} />
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-2.5">
@@ -113,11 +115,6 @@ export const ConceptCard: React.FC<Props> = ({ card, status, onClick }) => {
                 <div className="flex -space-x-1.5">
                     {card.isTool && <div className="w-5 h-5 rounded-full bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center text-yellow-500" title="Tool"><Zap size={10} /></div>}
                     {card.isReframed && <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400" title="Reframed"><ArrowRight size={10} /></div>}
-                    {hasPracticeLab && (
-                        <div className={`w-5 h-5 rounded-full ${isLabCompleted ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-purple-500/20 border-purple-500/30 text-purple-400'} border flex items-center justify-center`} title={isLabCompleted ? "Practice Lab Completado" : "Practice Lab Activo"}>
-                            <span className="text-[10px]">🧪</span>
-                        </div>
-                    )}
                 </div>
                 <div className="p-1 rounded-full group-hover:bg-primary/20 transition-colors">
                     <ArrowRight size={14} className={`${isLocked ? 'text-white/10' : 'text-primary'}`} />

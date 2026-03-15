@@ -211,17 +211,23 @@ export interface CapstoneState {
 }
 
 export interface PracticeLabProgress {
+    status: 'not-started' | 'content-added' | 'diagnostic' | 'in-progress' | 'completed';
+    currentLevel: number;        // 0 = diagnóstico, 1-5 = ejercicios
+    diagnosticPassed: boolean;
+    exercisesCompleted: number[];
+    exerciseRatings: Record<number, 'excellent' | 'good' | 'needs-review'>;
+    exerciseResponses: Record<number, string>;  // Lo que escribió el usuario
+    diagnosticResponses: Record<number, string>;
+    selfAssessment: boolean[];   // 5 checkboxes finales
+    totalXPEarned: number;
+    completedAt?: number;
+}
+
+export interface PracticeLab {
     cardId: string;
-    status: 'draft' | 'completed';
-    diagnosticCompleted: boolean;
-    diagnosticResponse?: string;
-    exerciseResponses: Record<number, {
-        response: string;
-        rating: 'excellent' | 'good' | 'needs-review';
-        completedAt: number;
-    }>;
-    content: string;
-    updatedAt: number;
+    rawContent: string;          // El markdown completo que pegó el usuario
+    savedAt: number;             // Timestamp
+    progress: PracticeLabProgress;
 }
 
 export interface UserProgressState {
@@ -251,7 +257,7 @@ export interface UserProgressState {
     debuffHistory: Debuff[];
     capstone: CapstoneState;
     ngPlus: NewGamePlusState;
-    practiceLabsData: Record<string, PracticeLabProgress>;
+    practiceLabsData: PracticeLab[];
     practiceLabsCompleted: number;
     practiceLabsTotalXP: number;
     lastSaved: number;
@@ -302,9 +308,18 @@ export interface GameState {
     currentTaxCard: string | null;
     isTaxDue: boolean;
     taxModalOpen: boolean;
+    dailyQuest: DailyQuest | null;
+    questHistory: DailyQuest[];
+    activeShadowQuest: ShadowQuest | null;
+    shadowQuestHistory: ShadowQuest[];
     shadowQuestModalOpen: boolean;
+    activeMirrorMatch: MirrorMatch | null;
+    mirrorMatchHistory: MirrorMatch[];
     mirrorMatchModalOpen: boolean;
+    activeTimeAttack: TimeAttack | null;
+    timeAttackHistory: TimeAttack[];
     timeAttackModalOpen: boolean;
+    debuffHistory: Debuff[];
     debuffPanelOpen: boolean;
     capstone: CapstoneState;
     capstonePanelOpen: boolean;

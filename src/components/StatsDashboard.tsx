@@ -13,11 +13,15 @@ export const StatsDashboard: React.FC = () => {
     const { 
         xp, completedCardIds, completedBossFights, 
         streakDays, maxStreakDays, studyLog,
-        taxesPaid, questHistory, shadowQuestHistory,
-        mirrorMatchHistory, timeAttackHistory,
-        debuffHistory, activatedCombos,
-        getCurrentLevel
+        taxesPaid, activatedCombos,
+        getCurrentLevel, progress
     } = useGameStore();
+
+    const questHistory = progress?.questHistory || [];
+    const shadowQuestHistory = progress?.shadowQuestHistory || [];
+    const mirrorMatchHistory = progress?.mirrorMatchHistory || [];
+    const timeAttackHistory = progress?.timeAttackHistory || [];
+    const debuffHistory = progress?.debuffHistory || [];
 
     const currentLevel = getCurrentLevel();
     const nextLevel = LEVELS.find(l => l.level === currentLevel + 1);

@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import type { ConceptCard as IConceptCard } from '../types';
 import { useGameStore } from '../stores/useGameStore';
-import { X, CheckCircle2, Key, Info, ClipboardPaste, Brain } from 'lucide-react';
+import { X, CheckCircle2, Key, Info, ClipboardPaste, Brain, Beaker } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useGemini } from '../hooks/useGemini';
 import { getResponseDraftText } from '../utils/savedResponses';
-import { PracticeLabPanel } from './PracticeLab/PracticeLabPanel';
 
 interface Props {
     card: IConceptCard | null;
@@ -17,6 +16,7 @@ interface Props {
 
 export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
     const {
+        progress,
         completeCard,
         completedCardIds,
         saveReview,
@@ -34,9 +34,9 @@ export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
     const [content, setContent] = useState('');
     const [recallResponse, setRecallResponse] = useState('');
     const [isHonest, setIsHonest] = useState(false);
-    const [showPracticeLab, setShowPracticeLab] = useState(false);
 
     const isCompleted = card ? completedCardIds.includes(card.id) : false;
+    const hasPracticeLab = card ? progress.practiceLabsData.some(lab => lab.cardId === card.id) : false;
     const hasApiKey = !!getApiKey();
     const manualContent = card ? contentStore[card.id]?.markdown : null;
     const recallDraftKey = card ? `card-recall:${card.id}` : '';
@@ -49,7 +49,6 @@ export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
 
         setRecallResponse(savedRecallResponse);
         setIsHonest(false);
-        setShowPracticeLab(false);
 
         if (manualContent) {
             setContent(manualContent);
@@ -91,7 +90,7 @@ export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className={`fixed top-0 right-0 h-full w-full ${showPracticeLab ? 'md:w-[900px]' : 'md:w-[500px]'} bg-card border-l border-white/10 z-[101] shadow-2xl flex flex-col transition-[width] duration-300`}
+                        className="fixed top-0 right-0 h-full w-full md:w-[500px] bg-card border-l border-white/10 z-[101] shadow-2xl flex flex-col"
                     >
                         <div className="p-6 flex justify-between items-center border-b border-white/5 bg-card/50 backdrop-blur-md sticky top-0 z-10">
                             <div className="flex items-center gap-2">
@@ -110,6 +109,22 @@ export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
                                     {card.isTool && <span className="text-[10px] font-bold bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full uppercase">Herramienta</span>}
                                 </div>
                                 <h2 className="text-4xl font-black text-white mb-2 leading-tight">{card.title}</h2>
+                                {isCompleted && (
+                                    <button
+                                        onClick={() => {
+                                            onClose();
+                                            // the skill tree will handle opening the practice lab panel using an event or state
+                                            const event = new CustomEvent('openPracticeLab', { detail: { cardId: card.id } });
+                                            window.dispatchEvent(event);
+                                        }}
+                                        className={`mt-4 px-4 py-2 flex items-center gap-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg
+                                            ${hasPracticeLab ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/30' : 'bg-primary hover:bg-white text-white hover:text-primary shadow-primary/20'}
+                                        `}
+                                    >
+                                        <Beaker size={14} />
+                                        {hasPracticeLab ? '🧪 Practice Lab Guardado' : '🧪 Practice Lab'}
+                                    </button>
+                                )}
                                 <p className="text-lg text-white/40 leading-relaxed font-medium">{card.subtitle}</p>
                             </div>
 
@@ -131,9 +146,7 @@ export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
                             </div>
 
                             <div className="prose prose-invert prose-p:text-white/70 prose-headings:text-white prose-strong:text-primary max-w-none min-h-[200px] relative">
-                                {showPracticeLab ? (
-                                    <PracticeLabPanel cardId={card.id} />
-                                ) : isLoading ? (
+                                {isLoading ? (
                                     <div className="flex flex-col items-center justify-center py-20 animate-pulse">
                                         <div className="w-12 h-12 rounded-full border-t-2 border-primary border-r-2 animate-spin mb-6" />
                                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Sintetizando leccion polimata...</p>
@@ -239,15 +252,6 @@ export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
                         </div>
 
                         <div className="p-8 border-t border-white/5 bg-black/20">
-                            {isCompleted && (
-                                <button
-                                    onClick={() => setShowPracticeLab(!showPracticeLab)}
-                                    className="mb-4 w-full p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl text-purple-400 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-purple-200/20 hover:text-white transition-all cursor-pointer"
-                                >
-                                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
-                                    {showPracticeLab ? 'Volver a la Lección' : '🧪 Practice Lab Multiplicador'}
-                                </button>
-                            )}
                             {isTaxDue && !isCompleted && (
                                 <button
                                     onClick={openTaxModal}

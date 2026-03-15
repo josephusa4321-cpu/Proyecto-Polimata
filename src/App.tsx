@@ -18,6 +18,7 @@ import { TimeAttackModal } from './components/TimeAttackModal'
 import { MirrorMatchPanel } from './components/MirrorMatchPanel'
 import { DebuffPanel } from './components/DebuffPanel'
 import { CapstonePanel } from './components/CapstonePanel'
+import { LevelUpModal } from './components/LevelUpModal'
 
 import { MissionsPanel } from './components/MissionsPanel'
 import { StatsDashboard } from './components/StatsDashboard'
@@ -26,11 +27,28 @@ const AUTO_SYNC_DEBOUNCE_MS = 1200
 let hasBootstrappedCloudSync = false
 
 const App: React.FC = () => {
-  const { incrementStatsVisit, loadFromCloud, syncToCloud, lastSaved } = useGameStore();
+  const { incrementStatsVisit, loadFromCloud, syncToCloud, lastSaved, getCurrentLevel } = useGameStore();
+  const currentLevel = getCurrentLevel();
+  const [isLevelUpOpen, setIsLevelUpOpen] = useState(false);
+  const lastLevelRef = React.useRef<number | null>(null);
+
   const [currentView, setCurrentView] = useState<ViewType>('skilltree');
   const autoSyncReadyRef = React.useRef(false);
   const previousLastSavedRef = React.useRef(lastSaved);
   const autoSyncTimerRef = React.useRef<number | null>(null);
+
+  // Trigger para Subida de Nivel
+  React.useEffect(() => {
+    if (lastLevelRef.current === null) {
+      lastLevelRef.current = currentLevel;
+      return;
+    }
+
+    if (currentLevel > lastLevelRef.current) {
+      setIsLevelUpOpen(true);
+      lastLevelRef.current = currentLevel;
+    }
+  }, [currentLevel]);
 
   const handleViewChange = (view: ViewType) => {
     setCurrentView(view);
@@ -116,6 +134,11 @@ const App: React.FC = () => {
       <MirrorMatchPanel />
       <DebuffPanel />
       <CapstonePanel />
+      <LevelUpModal 
+        isOpen={isLevelUpOpen} 
+        onClose={() => setIsLevelUpOpen(false)} 
+        level={currentLevel} 
+      />
 
       {/* Dynamic Background Elements */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">

@@ -1,12 +1,14 @@
-# Superpowers Finish Report: Phase 4 Part 1 (Pillars)
+# Finish Report - XP Burst Particles
 
 ## Summary of Changes
-- Updated `src/types/index.ts` to include `Milestone` and `Pillar` interfaces for Phase 4.
-- Created `src/data/pillars.ts` defining the 5 primary pillars mapping out the learning modules, milestones, and required completions.
+- **XPGainIndicator.tsx**: Enriquecido el indicador de ganancia de XP (`+XP`) con un sistema de partículas dinámico.
+  - Al crearse la cápsula de texto flotante, se disparan 12 chispas doradas (`bg-yellow-300` / `amber-500`) en abanico circular.
+  - Cada chispa utiliza keyframes de `framer-motion` para simular una explosión radial y un viaje acelerado hacia la esquina superior izquierda (donde se ubica el HUD de nivel), disolviéndose suavemente a escala 0.
 
-## Verification Commands & Results
-- **Command:** `npx tsc --noEmit ; npm run lint`
-- **Result:** TypeScript static analysis passes cleanly for the newly added interfaces and the `pillars.ts` array. (Note: standard pre-existing linting errors exist in `App.tsx` and other areas, but do not block the addition of these data models).
+## Verification
+- **Visual**: Al simular la ganancia de XP, 12 chispas amarillas explotan cubriendo un radio de 50px y luego vuelan hacia el HUD escalando y encogiéndose fluidamente.
+- **Rendimiento**: La cantidad de chispas está acorralada y se desmonta junto al indicador principal tras 2 segundos.
 
-## Follow-ups / Next Steps
-The Phase 4 Part 1 plan included loading 194 cards across 22 modules. However, the exact text/data for these modules was not included in the initial prompt. I am currently waiting for the user to provide the large document (~8000 words) with the exact content of the new modules to resume creating files like `module-x.tsx` and hooking up the boss fights.
+## Manual Validation (Para el Usuario)
+1. Gana XP por cualquier vía (completar card, quest o lab).
+2. Verás volar un estallido de luces doradas hacia tu número de nivel antes de que se sume la experiencia físicamente.

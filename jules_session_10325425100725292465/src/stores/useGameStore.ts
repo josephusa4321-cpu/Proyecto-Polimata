@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { GameState, ReviewItem, ConceptCard, ActivatedCombo, TeachingTaxEntry, DailyQuest, ShadowQuest, TimeAttack, MirrorMatch, Debuff, RunSummary, PersistedUserState, UserProgressState, PracticeLabProgress } from '../types';
+import type { GameState, ReviewItem, ConceptCard, ActivatedCombo, TeachingTaxEntry, DailyQuest, ShadowQuest, TimeAttack, MirrorMatch, Debuff, RunSummary, PersistedUserState, UserProgressState, PracticeLab, PracticeLabProgress } from '../types';
 import { LEVELS } from '../data/levels';
 import { supabase } from '../lib/supabase';
 import { createInitialProgressState, getDefaultStoreState, buildProgressFromState, getProgressMirror, mergeProgressState, migrateLegacyProgressState } from './progressState';
@@ -150,11 +150,10 @@ interface GameActions {
     closeCapstonePanel: () => void;
     completeCapstone: (submission: string) => void;
     startNewGamePlus: () => void;
+    savePracticeLab: (cardId: string, markdown: string) => void;
+    updatePracticeLabProgress: (cardId: string, progressUpdate: Partial<PracticeLabProgress>) => void;
     setSyncId: (id: string) => void;
     resetProgress: () => void;
-    savePracticeLabContent: (cardId: string, content: string) => void;
-    updateLabProgress: (cardId: string, progress: Partial<PracticeLabProgress>) => void;
-    completeLabExercise: (cardId: string, level: number, rating: 'excellent' | 'good' | 'needs-review', response: string, xp: number) => void;
 }
 
 export const XP_VALUES = {
@@ -303,98 +302,6 @@ export const useGameStore = create<GameState & GameActions>()(
                 return currentLevel;
             },
 
-            savePracticeLabContent: (cardId: string, content: string) => {
-                set((state) => {
-                    const progress = { ...(state.progress || {}) } as UserProgressState;
-                    const labs = { ...(progress.practiceLabsData || {}) };
-                    
-                    labs[cardId] = {
-                        cardId,
-                        status: 'draft',
-                        diagnosticCompleted: false,
-                        exerciseResponses: {},
-                        content,
-                        updatedAt: Date.now()
-                    };
-
-                    return {
-                        progress: {
-                            ...progress,
-                            practiceLabsData: labs
-                        }
-                    };
-                });
-            },
-
-            updateLabProgress: (cardId: string, labProgress: Partial<PracticeLabProgress>) => {
-                set((state) => {
-                    const progress = { ...(state.progress || {}) } as UserProgressState;
-                    const labs = { ...(progress.practiceLabsData || {}) };
-                    const existing = labs[cardId];
-
-                    if (existing) {
-                        labs[cardId] = {
-                            ...existing,
-                            ...labProgress,
-                            updatedAt: Date.now()
-                        };
-                    }
-
-                    return {
-                        progress: {
-                            ...progress,
-                            practiceLabsData: labs
-                        }
-                    };
-                });
-            },
-
-            completeLabExercise: (cardId: string, level: number, rating: 'excellent' | 'good' | 'needs-review', response: string, xp: number) => {
-                set((state) => {
-                    const progress = { ...(state.progress || {}) } as UserProgressState;
-                    const labs = { ...(progress.practiceLabsData || {}) };
-                    const lab = labs[cardId];
-
-                    if (lab) {
-                        const exerciseResponses = { ...(lab.exerciseResponses || {}) };
-                        exerciseResponses[level] = {
-                            response,
-                            rating,
-                            completedAt: Date.now()
-                        };
-
-                        const updatedLab = {
-                            ...lab,
-                            exerciseResponses,
-                            updatedAt: Date.now()
-                        };
-
-                        const levelsCompleted = Object.keys(exerciseResponses).map(Number);
-                        const allCompleted = [1, 2, 3, 4, 5].every(l => levelsCompleted.includes(l));
-                        
-                        if (allCompleted && updatedLab.status !== 'completed') {
-                            updatedLab.status = 'completed';
-                            progress.practiceLabsCompleted = (progress.practiceLabsCompleted || 0) + 1;
-                        }
-
-                        progress.practiceLabsTotalXP = (progress.practiceLabsTotalXP || 0) + xp;
-                        labs[cardId] = updatedLab;
-
-                        return {
-                            progress: {
-                                ...progress,
-                                practiceLabsData: labs,
-                                xp: progress.xp + xp
-                            },
-                            lastXPGain: { amount: xp, timestamp: Date.now() },
-                            lastSaved: Date.now()
-                        };
-                    }
-                    return {};
-                });
-                get().checkAchievements();
-            },
-
             setApiKey: (key: string) => set({ apiKey: key }),
 
             getApiKey: () => get().apiKey,
@@ -409,34 +316,40 @@ export const useGameStore = create<GameState & GameActions>()(
             getCachedContent: (cardId: string) => get().contentCache[cardId]?.content || null,
 
             saveReview: (cardId: string, success: boolean) => {
-                const { reviews } = get();
+                const { reviews, progress } = get();
                 const intervals = [1, 3, 7, 21, 60];
                 const existingReview = reviews.find(r => r.cardId === cardId);
                 const now = Date.now();
                 const retryDelayMs = 10 * 60 * 1000;
-
-                const lab = get().progress.practiceLabsData?.[cardId];
-                const isLabCompleted = lab && lab.status === 'completed';
-                const multiplier = isLabCompleted ? 1.5 : 1;
+                
+                const hasCompletedLab = progress.practiceLabsData.some(
+                    lab => lab.cardId === cardId && lab.progress.status === 'completed'
+                );
+                
+                const multiplier = hasCompletedLab ? 1.5 : 1;
 
                 let nextReviewItem: ReviewItem;
 
                 if (existingReview && success) {
                     const nextLevel = success ? Math.min(intervals.length - 1, existingReview.level + 1) : 0;
+                    const intervalDays = intervals[nextLevel] * multiplier;
+                    
                     nextReviewItem = {
                         ...existingReview,
                         level: nextLevel,
-                        interval: intervals[nextLevel],
-                        nextReview: now + intervals[nextLevel] * 24 * 60 * 60 * 1000 * multiplier,
+                        interval: intervalDays,
+                        nextReview: now + intervalDays * 24 * 60 * 60 * 1000,
                         updatedAt: now
                     };
                 } else {
+                    const intervalDays = success ? intervals[0] * multiplier : 0;
+                    
                     nextReviewItem = {
                         cardId,
                         level: 0,
-                        interval: success ? intervals[0] : 0,
+                        interval: intervalDays,
                         nextReview: success
-                            ? now + intervals[0] * 24 * 60 * 60 * 1000 * multiplier
+                            ? now + intervalDays * 24 * 60 * 60 * 1000
                             : now + retryDelayMs,
                         updatedAt: now
                     };
@@ -760,31 +673,31 @@ export const useGameStore = create<GameState & GameActions>()(
                             isMet = Object.keys(state.contentStore).length >= 10;
                             break;
                         case "quest-warrior":
-                            isMet = (state.progress?.questHistory || []).length >= 7;
+                            isMet = state.questHistory.length >= 7;
                             break;
                         case "quest-legend":
-                            isMet = (state.progress?.questHistory || []).length >= 30;
+                            isMet = state.questHistory.length >= 30;
                             break;
                         case "tax-collector":
                             isMet = state.taxesPaid.length >= 5;
                             break;
                         case "shadow-walker":
-                            isMet = (state.progress?.shadowQuestHistory || []).length >= 5;
+                            isMet = state.shadowQuestHistory.length >= 5;
                             break;
                         case "devils-advocate":
-                            isMet = (state.progress?.mirrorMatchHistory || []).length >= 3;
+                            isMet = state.mirrorMatchHistory.length >= 3;
                             break;
                         case "speed-thinker":
-                            isMet = (state.progress?.timeAttackHistory || []).filter((t: any) => t.completed).length >= 5;
+                            isMet = state.timeAttackHistory.filter(t => t.completed).length >= 5;
                             break;
                         case "lightning-fast":
-                            isMet = (state.progress?.timeAttackHistory || []).some((t: any) => t.completed && (t.timeUsed || 99) < 15);
+                            isMet = state.timeAttackHistory.some(t => t.completed && (t.timeUsed || 99) < 15);
                             break;
                         case "self-aware":
-                            isMet = (state.progress?.debuffHistory || []).length >= 1;
+                            isMet = state.debuffHistory.length >= 1;
                             break;
                         case "bias-hunter":
-                            const uniqueBiases = new Set((state.progress?.debuffHistory || []).map((d: any) => d.biasId));
+                            const uniqueBiases = new Set(state.debuffHistory.map(d => d.biasId));
                             isMet = uniqueBiases.size >= 10;
                             break;
                         case "polymath":
@@ -870,8 +783,7 @@ export const useGameStore = create<GameState & GameActions>()(
             },
 
             checkDailyQuest: async () => {
-                const { progress, completedCardIds } = get();
-                const dailyQuest = progress?.dailyQuest;
+                const { dailyQuest, completedCardIds } = get();
                 const today = new Date().toISOString().split('T')[0];
 
                 // If we already have a quest for today, don't generate another
@@ -916,18 +828,11 @@ export const useGameStore = create<GameState & GameActions>()(
                     updatedAt: Date.now()
                 };
 
-                set((state) => ({
-                    progress: {
-                        ...state.progress,
-                        dailyQuest: newQuest,
-                    },
-                    lastSaved: Date.now()
-                }));
+                set({ dailyQuest: newQuest, lastSaved: Date.now() });
             },
 
             completeDailyQuest: (answer: string) => {
-                const { progress } = get();
-                const dailyQuest = progress?.dailyQuest;
+                const { dailyQuest } = get();
                 if (!dailyQuest || dailyQuest.completed) return;
 
                 const updatedQuest: DailyQuest = {
@@ -939,11 +844,8 @@ export const useGameStore = create<GameState & GameActions>()(
                 };
 
                 set((state) => ({
-                    progress: {
-                        ...state.progress,
-                        dailyQuest: updatedQuest,
-                        questHistory: [...(state.progress.questHistory || []), updatedQuest],
-                    },
+                    dailyQuest: updatedQuest,
+                    questHistory: [...state.questHistory, updatedQuest],
                     xp: state.xp + dailyQuest.xpReward,
                     lastXPGain: { amount: dailyQuest.xpReward, timestamp: Date.now() },
                     lastSaved: Date.now()
@@ -956,8 +858,7 @@ export const useGameStore = create<GameState & GameActions>()(
             closeShadowQuestModal: () => set({ shadowQuestModalOpen: false }),
 
             checkShadowQuest: async () => {
-                const { completedCardIds, progress } = get();
-                const activeShadowQuest = progress?.activeShadowQuest;
+                const { completedCardIds, activeShadowQuest } = get();
                 // Check if we hit a multiple of 5 cards
                 if (completedCardIds.length === 0 || completedCardIds.length % 5 !== 0) return;
                 
@@ -987,19 +888,11 @@ export const useGameStore = create<GameState & GameActions>()(
                     updatedAt: Date.now()
                 };
 
-                set((state) => ({
-                    progress: {
-                        ...state.progress,
-                        activeShadowQuest: newQuest,
-                    },
-                    shadowQuestModalOpen: true,
-                    lastSaved: Date.now()
-                }));
+                set({ activeShadowQuest: newQuest, shadowQuestModalOpen: true, lastSaved: Date.now() });
             },
 
             completeShadowQuest: (observation: string) => {
-                const { progress } = get();
-                const activeShadowQuest = progress?.activeShadowQuest;
+                const { activeShadowQuest } = get();
                 if (!activeShadowQuest) return;
 
                 const completedQuest: ShadowQuest = {
@@ -1011,11 +904,8 @@ export const useGameStore = create<GameState & GameActions>()(
                 };
 
                 set((state) => ({
-                    progress: {
-                        ...state.progress,
-                        activeShadowQuest: null,
-                        shadowQuestHistory: [...(state.progress.shadowQuestHistory || []), completedQuest],
-                    },
+                    activeShadowQuest: null,
+                    shadowQuestHistory: [...state.shadowQuestHistory, completedQuest],
                     xp: state.xp + activeShadowQuest.xpReward,
                     lastXPGain: { amount: activeShadowQuest.xpReward, timestamp: Date.now() },
                     shadowQuestModalOpen: false,
@@ -1029,8 +919,7 @@ export const useGameStore = create<GameState & GameActions>()(
             closeTimeAttackModal: () => set({ timeAttackModalOpen: false }),
 
             checkTimeAttack: async (isManual = false) => {
-                const { completedCardIds, progress } = get();
-                const activeTimeAttack = progress?.activeTimeAttack;
+                const { completedCardIds, activeTimeAttack } = get();
                 
                 // If triggered manually, we ignore the card count
                 if (!isManual) {
@@ -1068,19 +957,11 @@ export const useGameStore = create<GameState & GameActions>()(
                     updatedAt: Date.now()
                 };
 
-                set((state) => ({
-                    progress: {
-                        ...state.progress,
-                        activeTimeAttack: newAttack,
-                    },
-                    timeAttackModalOpen: true,
-                    lastSaved: Date.now()
-                }));
+                set({ activeTimeAttack: newAttack, timeAttackModalOpen: true, lastSaved: Date.now() });
             },
 
             completeTimeAttack: (answer: string, secondsUsed: number) => {
-                const { progress } = get();
-                const activeTimeAttack = progress?.activeTimeAttack;
+                const { activeTimeAttack } = get();
                 if (!activeTimeAttack) return;
 
                 const isFast = secondsUsed < 30;
@@ -1098,11 +979,8 @@ export const useGameStore = create<GameState & GameActions>()(
                 };
 
                 set((state) => ({
-                    progress: {
-                        ...state.progress,
-                        activeTimeAttack: null,
-                        timeAttackHistory: [...(state.progress.timeAttackHistory || []), completedAttack],
-                    },
+                    activeTimeAttack: null,
+                    timeAttackHistory: [...state.timeAttackHistory, completedAttack],
                     xp: state.xp + totalXP,
                     lastXPGain: { amount: totalXP, timestamp: Date.now() },
                     timeAttackModalOpen: false,
@@ -1116,8 +994,7 @@ export const useGameStore = create<GameState & GameActions>()(
             closeMirrorMatchModal: () => set({ mirrorMatchModalOpen: false }),
 
             checkMirrorMatch: async () => {
-                const { completedCardIds, progress } = get();
-                const activeMirrorMatch = progress?.activeMirrorMatch;
+                const { completedCardIds, activeMirrorMatch } = get();
                 if (completedCardIds.length === 0 || completedCardIds.length % 8 !== 0) return;
                 if (activeMirrorMatch) return;
 
@@ -1141,19 +1018,11 @@ export const useGameStore = create<GameState & GameActions>()(
                     updatedAt: Date.now()
                 };
 
-                set((state) => ({
-                    progress: {
-                        ...state.progress,
-                        activeMirrorMatch: newMatch,
-                    },
-                    mirrorMatchModalOpen: true,
-                    lastSaved: Date.now()
-                }));
+                set({ activeMirrorMatch: newMatch, mirrorMatchModalOpen: true, lastSaved: Date.now() });
             },
 
             completeMirrorMatch: (argument: string) => {
-                const { progress } = get();
-                const activeMirrorMatch = progress?.activeMirrorMatch;
+                const { activeMirrorMatch } = get();
                 if (!activeMirrorMatch) return;
 
                 const completedMatch: MirrorMatch = {
@@ -1165,11 +1034,8 @@ export const useGameStore = create<GameState & GameActions>()(
                 };
 
                 set((state) => ({
-                    progress: {
-                        ...state.progress,
-                        activeMirrorMatch: null,
-                        mirrorMatchHistory: [...(state.progress.mirrorMatchHistory || []), completedMatch],
-                    },
+                    activeMirrorMatch: null,
+                    mirrorMatchHistory: [...state.mirrorMatchHistory, completedMatch],
                     xp: state.xp + activeMirrorMatch.xpReward,
                     lastXPGain: { amount: activeMirrorMatch.xpReward, timestamp: Date.now() },
                     mirrorMatchModalOpen: false,
@@ -1199,10 +1065,7 @@ export const useGameStore = create<GameState & GameActions>()(
                     };
 
                     set((state) => ({
-                        progress: {
-                            ...state.progress,
-                            debuffHistory: [...(state.progress?.debuffHistory || []), newDebuff],
-                        },
+                        debuffHistory: [...state.debuffHistory, newDebuff],
                         xp: Math.max(0, state.xp + XP_VALUES.DEBUFF_PENALTY),
                         lastXPGain: { amount: XP_VALUES.DEBUFF_PENALTY, timestamp: Date.now() },
                         lastSaved: Date.now()
@@ -1242,6 +1105,73 @@ export const useGameStore = create<GameState & GameActions>()(
                 }));
 
                 get().checkAchievements();
+            },
+
+            savePracticeLab: (cardId: string, markdown: string) => {
+                const { progress } = get();
+                const existingLab = progress.practiceLabsData.find(lab => lab.cardId === cardId);
+                
+                const newLab: PracticeLab = {
+                    cardId,
+                    rawContent: markdown,
+                    savedAt: Date.now(),
+                    progress: existingLab ? existingLab.progress : {
+                        status: 'content-added',
+                        currentLevel: 0,
+                        diagnosticPassed: false,
+                        exercisesCompleted: [],
+                        exerciseRatings: {},
+                        exerciseResponses: {},
+                        diagnosticResponses: {},
+                        selfAssessment: [],
+                        totalXPEarned: 0
+                    }
+                };
+
+                set((state) => {
+                    const nextProgress = {
+                        ...state.progress,
+                        practiceLabsData: [...state.progress.practiceLabsData.filter(lab => lab.cardId !== cardId), newLab]
+                    };
+                    return {
+                        progress: nextProgress,
+                        lastSaved: Date.now()
+                    };
+                });
+            },
+
+            updatePracticeLabProgress: (cardId: string, progressUpdate: Partial<PracticeLabProgress>) => {
+                const { progress } = get();
+                const existingLab = progress.practiceLabsData.find(lab => lab.cardId === cardId);
+                
+                if (!existingLab) return;
+                
+                const updatedProgress = { ...existingLab.progress, ...progressUpdate };
+                const newTotalXP = updatedProgress.totalXPEarned || 0;
+                const xpDiff = newTotalXP - (existingLab.progress.totalXPEarned || 0);
+
+                const updatedLab: PracticeLab = {
+                    ...existingLab,
+                    progress: updatedProgress
+                };
+                
+                const isNewlyCompleted = existingLab.progress.status !== 'completed' && updatedProgress.status === 'completed';
+
+                set((state) => {
+                    const nextProgress = {
+                        ...state.progress,
+                        practiceLabsData: [...state.progress.practiceLabsData.filter(lab => lab.cardId !== cardId), updatedLab],
+                        practiceLabsTotalXP: state.progress.practiceLabsTotalXP + xpDiff,
+                        xp: state.progress.xp + xpDiff,
+                        practiceLabsCompleted: state.progress.practiceLabsCompleted + (isNewlyCompleted ? 1 : 0)
+                    };
+                    return {
+                        progress: nextProgress,
+                        xp: state.xp + xpDiff,
+                        lastXPGain: xpDiff > 0 ? { amount: xpDiff, timestamp: Date.now() } : state.lastXPGain,
+                        lastSaved: Date.now()
+                    };
+                });
             },
 
             startNewGamePlus: () => {
