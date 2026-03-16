@@ -91,7 +91,7 @@ export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className={`fixed top-0 right-0 h-full w-full ${showPracticeLab ? 'md:w-[900px]' : 'md:w-[500px]'} bg-card border-l border-white/10 z-[101] shadow-2xl flex flex-col transition-[width] duration-300`}
+                        className={`fixed top-0 right-0 h-full w-full ${showPracticeLab ? 'md:w-1/2' : 'md:w-[500px]'} bg-card border-l border-white/10 z-[101] shadow-2xl flex flex-col transition-[width] duration-300`}
                     >
                         <div className="p-6 flex justify-between items-center border-b border-white/5 bg-card/50 backdrop-blur-md sticky top-0 z-10">
                             <div className="flex items-center gap-2">
@@ -130,10 +130,15 @@ export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
                                 </div>
                             </div>
 
-                            <div className="prose prose-invert prose-p:text-white/70 prose-headings:text-white prose-strong:text-primary max-w-none min-h-[200px] relative">
-                                {showPracticeLab ? (
+                            {showPracticeLab ? (
+                                <div className="min-h-[200px] relative">
                                     <PracticeLabPanel cardId={card.id} />
-                                ) : isLoading ? (
+                                </div>
+                            ) : (
+                                <div className="prose prose-invert prose-p:text-white/70 prose-headings:text-white prose-strong:text-primary max-w-none min-h-[200px] relative">
+
+
+                                    {isLoading ? (
                                     <div className="flex flex-col items-center justify-center py-20 animate-pulse">
                                         <div className="w-12 h-12 rounded-full border-t-2 border-primary border-r-2 animate-spin mb-6" />
                                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Sintetizando leccion polimata...</p>
@@ -191,7 +196,8 @@ export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
                                         )}
                                     </div>
                                 )}
-                            </div>
+                                </div>
+                            )}
 
                             {!isLoading && content && (!isCompleted || savedRecallResponse.trim().length > 0) && (
                                 <motion.div

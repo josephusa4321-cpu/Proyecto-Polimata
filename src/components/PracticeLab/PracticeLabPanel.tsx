@@ -150,6 +150,7 @@ export const PracticeLabPanel: React.FC<PracticeLabPanelProps> = ({ cardId }) =>
 
                     return (
                         <ExerciseSection 
+                            key={`ex-${level}`}
                             level={level}
                             title={ex.title}
                             description={ex.description}

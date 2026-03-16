@@ -1,40 +1,30 @@
-# [Fase 2] Interactive Boss Fight (Combate por Turnos)
+## Goal
+Corregir la gestión de estados (sobreescritura de respuestas) y ajustar las dimensiones/estilos de la interfaz para que sea más legible y ocupe el 50% de la pantalla.
 
-Transformar el actual `BossFightPanel` (que es solo un cuadro de texto) en un módulo de juego interactivo donde el usuario "debate" contra el boss usando sus conocimientos (Concept Cards).
+## Assumptions
+- `PracticeLabPanel` es contenido interactivo y no debe estar bajo el formateo `prose`.
+- El ajuste `md:w-1/2` se adapta al requerimiento de "mitad de la pantalla" de forma responsiva.
 
-## User Review Required
+## Plan
 
-> [!IMPORTANT]
-> Esto nos adentra en la **Fase 2** del proyecto. Requiere expandir el estado con `hp` (Puntos de Vida) o usar dinámicas de Framer Motion para simular turnos de juego.
+### Paso 1: Fijar Estado por Ejercicio
+- **Files**: `src/components/PracticeLab/PracticeLabPanel.tsx`
+- **Change**: Añadir prop `key={\`ex-\${level}\`}` a `<ExerciseSection>` (línea ~152).
+- **Verify**: Cambiar de ejercicio y verificar que el campo de texto se limpie/sea independiente.
 
-## Proposed Changes
+### Paso 2: Redimensionar Ancho del Panel
+- **Files**: `src/components/StudyPanel.tsx`
+- **Change**: Modificar `md:w-[900px]` por `md:w-1/2` cuando `showPracticeLab` sea true (línea ~94).
+- **Verify**: El panel debe ocupar la mitad de la pantalla en dispositivos medianos/grandes.
 
-### 🎨 Componentes de Combate
+### Paso 3: Corregir Inflación de Estilos (Remover `prose`)
+- **Files**: `src/components/StudyPanel.tsx`
+- **Change**: Ajustar el renderizado condicional (línea ~133) para que `PracticeLabPanel` no esté dentro del contenedor con la clase `prose`.
+- **Verify**: Los textos deben tener el tamaño estándar de la aplicación.
 
-#### [MODIFY] [BossFightPanel.tsx](file:///c:/Users/USUARIO/Desktop/Proyecto%20Polimata/src/components/BossFightPanel.tsx)
-- Rediseñar el modal para mostrar:
-  - **Barra de vida del usuario (HP)**: Basada en su racha o nivel.
-  - **Barra de vida del Boss (HP)**: El "Sesgo" o monstruo conceptual.
-  - **Mano de cartas**: Cartas del módulo actual cargadas para "atacar".
-- Añadir lógica de turnos:
-  1. El Boss lanza un **Argumento erróneo** (ej: "Los sistemas son estáticos").
-  2. El usuario selecciona la **Concept Card correcta** para contrarrestarlo.
-  3. Si la carta es correcta, la barra del Boss baja. Si no, baja la del usuario.
+## Risks & mitigations
+- **Riesgo**: `md:w-1/2` podría verse algo estrecho en pantallas de laptops pequeñas.
+- **Mitigación**: El diseño es responsivo y el contenido se ajusta verticalmente.
 
-#### [NEW] [BossFightHUD.tsx](file:///c:/Users/USUARIO/Desktop/Proyecto%20Polimata/src/components/BossFightHUD.tsx)
-- Un sub-componente para renderizar la vida y los avatares enfrentados.
-
----
-
-## Verification Plan
-
-### Manual Verification
-1. Entrar a un módulo completo.
-2. Iniciar el combate.
-3. Verificar que bajen los puntos de vida al dar clic en las opciones de contra-argumento.
-4. Mostrar pantalla de victoria/derrota animada.
-
----
-
-## Approval
-- [ ] Aprobado por el usuario para iniciar construcción.
+## Rollback plan
+- Ejecutar `git restore src/components/PracticeLab/PracticeLabPanel.tsx src/components/StudyPanel.tsx` para revertir cambios.
