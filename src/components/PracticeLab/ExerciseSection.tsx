@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Award, CheckCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -23,6 +23,14 @@ export const ExerciseSection: React.FC<ExerciseSectionProps> = ({
 }) => {
     const [response, setResponse] = useState(savedResponse);
     const [rating, setRating] = useState<'excellent' | 'good' | 'needs-review' | null>(savedRating || null);
+
+    useEffect(() => {
+        setResponse(savedResponse);
+    }, [savedResponse]);
+
+    useEffect(() => {
+        setRating(savedRating || null);
+    }, [savedRating]);
 
     const xpReward = 10 + (level * 2); // E.g., Level 1 = 12 XP, Level 5 = 20 XP
     const bonusXp = rating === 'excellent' ? 5 : 0;
