@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Trash2, Eye, Edit3, ClipboardPaste, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { useGameStore } from '../stores/useGameStore';
 import type { ConceptCard } from '../types';
+import { FormattedCardContent } from './FormattedCardContent';
 
 interface Props {
     card: ConceptCard | null;
@@ -151,7 +150,7 @@ export const ContentEditor: React.FC<Props> = ({ card, isOpen, onClose }) => {
                             ) : (
                                 <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar prose prose-invert prose-p:text-white/70 prose-headings:text-white prose-strong:text-primary max-w-none">
                                     {markdown ? (
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
+                                        <FormattedCardContent content={markdown} />
                                     ) : (
                                         <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
                                             <Edit3 size={40} className="mb-4" />

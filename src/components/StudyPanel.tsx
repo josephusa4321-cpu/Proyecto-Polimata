@@ -3,11 +3,10 @@ import type { ConceptCard as IConceptCard } from '../types';
 import { useGameStore } from '../stores/useGameStore';
 import { X, CheckCircle2, Key, Info, ClipboardPaste, Brain } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { useGemini } from '../hooks/useGemini';
 import { getResponseDraftText } from '../utils/savedResponses';
 import { PracticeLabPanel } from './PracticeLab/PracticeLabPanel';
+import { FormattedCardContent } from './FormattedCardContent';
 
 interface Props {
     card: IConceptCard | null;
@@ -169,9 +168,7 @@ export const StudyPanel: React.FC<Props> = ({ card, isOpen, onClose }) => {
                                                 </button>
                                             </div>
                                         )}
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {content}
-                                        </ReactMarkdown>
+                                        <FormattedCardContent content={content} />
                                     </>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-12 px-6 bg-white/5 border border-white/5 rounded-3xl text-center">

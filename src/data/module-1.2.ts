@@ -11,7 +11,56 @@ export const MODULE_1_2: Module = {
 };
 
 export const CARDS_1_2: ConceptCard[] = [
-    { id: "1.2.01", title: "Razonamiento causal: ¿qué causa qué?", subtitle: "", type: "fundamental", xp: 100, prerequisites: ["1.1.02"], isTool: false, isNew: false, isReframed: false, crossPillarLinks: [], auditNote: null },
+    { 
+        id: "1.2.01", 
+        title: "Razonamiento causal: ¿qué causa qué?", 
+        subtitle: "Identificar la cadena de transmisión entre causa y efecto", 
+        type: "fundamental", 
+        xp: 100, 
+        prerequisites: ["1.1.02"], 
+        isTool: false, 
+        isNew: false, 
+        isReframed: false, 
+        crossPillarLinks: [], 
+        auditNote: null,
+        content: `## 1.2.01 — Razonamiento causal: ¿qué causa qué?
+🔷 Fundamental | 100 XP | Prereqs: 1.1.02 | 🔗 Base de todo el módulo 1.2
+
+### ⚡ Esencia
+Razonamiento causal es identificar qué produce qué y por qué mecanismo. No basta con ver que dos cosas ocurren juntas — necesitas la cadena de transmisión entre causa y efecto. Sin causalidad clara, intervienes donde no debes o ignoras lo que realmente importa.
+
+### 📊 Diagrama
+
+\`\`\`mermaid
+flowchart TD
+    O["Observas: A y B<br>ocurren juntos"] --> Q1{"¿Existe un mecanismo<br>que conecte A → B?"}
+    Q1 -->|No| NC["🚫 No es causa"]
+    Q1 -->|Sí| Q2{"¿La dirección<br>es correcta?"}
+    Q2 -->|"Podría ser B → A"| R["⚠️ Causalidad<br>inversa"]
+    Q2 -->|Sí| Q3{"¿Hay causa oculta C<br>que produzca ambos?"}
+    Q3 -->|Sí| S["⚠️ Causa común<br>correlación espuria"]
+    Q3 -->|Descartada| CAUSA["✅ Causa genuina"]
+
+    style CAUSA fill:#2a9d8f,stroke:#333,color:#fff
+    style NC fill:#d33,stroke:#333,color:#fff
+    style R fill:#e9c46a,stroke:#333
+    style S fill:#e9c46a,stroke:#333
+\`\`\`
+
+### 🔍 Ejemplo clave
+Ciudades con más bomberos tienen más incendios. ¿Los bomberos causan incendios? No — la causa común es el tamaño de la ciudad (más población → más incendios Y más bomberos). Sin buscar el mecanismo, habrías concluido que reducir bomberos reduce incendios.
+
+### ⚠️ Trampa típica
+Confundir secuencia temporal con causa: "B ocurrió después de A, entonces A causó B." La mañana sigue a la noche, pero la noche no causa la mañana.
+
+### 🔗 Conexiones
+- **1.1.02** (Lineal vs. sistémico): el pensamiento lineal busca UNA causa; el causal-sistémico reconoce redes de causas simultáneas.
+- **1.2.02** (Correlación vs. causalidad): profundiza la distinción que este diagrama introduce.
+- **1.2.03** (Próximas vs. raíz): una vez identificada la causa, falta saber si es la superficial o la profunda.
+
+### 🧠 Recall
+Las ventas de helado y los ahogamientos suben al mismo tiempo cada año. Tu jefe propone prohibir helados cerca de piscinas. ¿Cómo usarías el filtro causal de tres preguntas para evaluar su propuesta?`
+    },
     { id: "1.2.02", title: "Correlación vs. causalidad", subtitle: "", type: "fundamental", xp: 100, prerequisites: ["1.2.01"], isTool: true, isNew: false, isReframed: false, crossPillarLinks: [{ targetId: "2.1.04", priority: "high", reason: "inducción y correlación engañosa" }], auditNote: null },
     { id: "1.2.03", title: "Causas próximas vs. causas raíz", subtitle: "", type: "fundamental", xp: 100, prerequisites: ["1.2.01"], isTool: true, isNew: false, isReframed: false, crossPillarLinks: [], auditNote: null },
     { id: "1.2.04", title: "Los 5 Porqués (root cause analysis)", subtitle: "", type: "intermediate", xp: 75, prerequisites: ["1.2.03"], isTool: true, isNew: false, isReframed: false, crossPillarLinks: [], auditNote: null },
